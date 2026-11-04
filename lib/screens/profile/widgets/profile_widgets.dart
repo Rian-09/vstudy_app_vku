@@ -67,6 +67,14 @@ class ProfileHeader extends StatelessWidget {
                             user.avatarAsset,
                             fit: BoxFit.cover,
                             semanticLabel: 'Ảnh đại diện',
+                            errorBuilder: (context, error, stackTrace) =>
+                                const ColoredBox(
+                                  color: Color(0xFFDDE2EE),
+                                  child: Icon(
+                                    Icons.person_outline,
+                                    color: AuthColors.navy,
+                                  ),
+                                ),
                           ),
                         ),
                       ),

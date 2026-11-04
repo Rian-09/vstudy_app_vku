@@ -63,6 +63,10 @@ class GreetingHeader extends StatelessWidget {
                 height: 46,
                 fit: BoxFit.cover,
                 semanticLabel: 'Mở hồ sơ',
+                errorBuilder: (context, error, stackTrace) => const ColoredBox(
+                  color: Color(0xFFDDE2EE),
+                  child: Icon(Icons.person_outline, color: AuthColors.navy),
+                ),
               ),
             ),
           ),
@@ -696,20 +700,29 @@ class DeadlineCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                item.tag,
-                style: _DeadlineText.tag.copyWith(color: item.tagColor),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item.remaining,
-                style: _DeadlineText.body.copyWith(color: item.remainingColor),
-              ),
-            ],
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 108),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  item.tag,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _DeadlineText.tag.copyWith(color: item.tagColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.remaining,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _DeadlineText.body.copyWith(
+                    color: item.remainingColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

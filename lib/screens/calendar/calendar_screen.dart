@@ -44,7 +44,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return '${_monthName(_selectedDate.month)} ${_selectedDate.year}';
     }
     final end = _weekStart.add(const Duration(days: 6));
-    return '${_weekStart.day} - ${end.day} ${_monthName(end.month)} ${end.year}';
+    if (_weekStart.month == end.month) {
+      return '${_weekStart.day} - ${end.day} ${_monthName(end.month)} ${end.year}';
+    }
+    return '${_weekStart.day} ${_monthName(_weekStart.month)} - '
+        '${end.day} ${_monthName(end.month)} ${end.year}';
   }
 
   Future<void> _openAddForm() async {
@@ -90,7 +94,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
                   const SizedBox(height: 7),
-                  if (_mode != CalendarViewMode.month)
+                  if (_mode == CalendarViewMode.day)
                     _WeekDateStrip(
                       weekStart: _weekStart,
                       selectedDate: _selectedDate,
@@ -100,13 +104,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   if (_mode == CalendarViewMode.day) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 6, 20, 7),
-                      child: Text(
-                        '${_weekdayName(_selectedDate.weekday)}, ${_selectedDate.day}/${_selectedDate.month} · còn ${dayEvents.where((event) => event.type == CalendarEventType.selfStudy).length} buổi tự học',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          color: Color(0xFF1F2A44),
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${_weekdayName(_selectedDate.weekday)}, ${_selectedDate.day}/${_selectedDate.month} · còn ${dayEvents.where((event) => event.type == CalendarEventType.selfStudy).length} buổi tự học',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                color: Color(0xFF1F2A44),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _movePeriod(-1),
+                            tooltip: 'Ngày trước',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
+                            icon: const Icon(
+                              Icons.chevron_left,
+                              color: _calendarNavy,
+                              size: 20,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _movePeriod(1),
+                            tooltip: 'Ngày sau',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
+                            icon: const Icon(
+                              Icons.chevron_right,
+                              color: _calendarNavy,
+                              size: 20,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     DayTimeline(
@@ -127,8 +165,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: WeekGrid(
                         weekStart: _weekStart,
+                        selectedDate: _selectedDate,
                         events: weekEvents,
                         onEventTap: _openEvent,
+                        onDaySelected: (date) => setState(() {
+                          _selectedDate = date;
+                        }),
                       ),
                     ),
                   ] else ...[

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'documents/documents_screen.dart';
-import 'documents/library_screen.dart';
-import 'calendar/calendar_screen.dart';
-import 'home/home_screen.dart';
 import '../theme/auth_theme.dart';
 import '../widgets/auth_widgets.dart';
+import 'calendar/calendar_screen.dart';
+import 'documents/documents_screen.dart';
+import 'documents/library_screen.dart';
+import 'home/home_screen.dart';
+import 'quiz/quiz_home_screen.dart';
+import 'stats/stats_menu_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key, this.initialIndex = 2, this.showLibrary = false});
@@ -45,13 +47,19 @@ class _MainShellState extends State<MainShell> {
           ? const LibraryScreen()
           : switch (_selectedIndex) {
               0 => const CalendarScreen(),
+              1 => const QuizNavigationHost(),
               2 => const HomeScreen(),
+              3 => const StatsNavigationHost(),
               4 => const DocumentsScreen(),
               _ => _PlaceholderTab(title: _tabs[_selectedIndex].label),
             },
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton:
-          _selectedIndex == 0 || _selectedIndex == 2 || _selectedIndex == 4
+          _selectedIndex == 0 ||
+              _selectedIndex == 1 ||
+              _selectedIndex == 2 ||
+              _selectedIndex == 3 ||
+              _selectedIndex == 4
           ? SizedBox.square(
               dimension: 65,
               child: FloatingActionButton(

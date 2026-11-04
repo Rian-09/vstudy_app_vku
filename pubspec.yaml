@@ -66,6 +66,8 @@ flutter:
     - assets/images/profile/
     - assets/images/documents/
     - assets/images/calendar/
+    - assets/images/stats/
+    - assets/images/quiz/
 
   fonts:
     - family: Inter

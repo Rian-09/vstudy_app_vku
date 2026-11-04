@@ -123,7 +123,7 @@ class EventBlock extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${event.startTime.format(context)} - ${event.endTime.format(context)}'
+                      '${formatCalendarTime(event.startTime)} - ${formatCalendarTime(event.endTime)}'
                       '${event.location.isEmpty ? '' : ' - ${event.location}'}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -186,7 +186,7 @@ class DayTimeline extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          for (var hour = 0; hour <= 24; hour++)
+          for (var hour = 0; hour < 24; hour++)
             Positioned(
               top: hour * 28.5,
               left: 0,
@@ -233,13 +233,17 @@ class WeekGrid extends StatelessWidget {
   const WeekGrid({
     super.key,
     required this.weekStart,
+    required this.selectedDate,
     required this.events,
     required this.onEventTap,
+    required this.onDaySelected,
   });
 
   final DateTime weekStart;
+  final DateTime selectedDate;
   final List<CalendarEvent> events;
   final ValueChanged<CalendarEvent> onEventTap;
+  final ValueChanged<DateTime> onDaySelected;
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +262,13 @@ class WeekGrid extends StatelessWidget {
                       _WeekDateCell(
                         label: dayLabels[index],
                         date: weekStart.add(Duration(days: index)),
+                        selected: _sameCalendarDate(
+                          weekStart.add(Duration(days: index)),
+                          selectedDate,
+                        ),
                         events: events,
+                        onTap: () =>
+                            onDaySelected(weekStart.add(Duration(days: index))),
                       ),
                     ],
                   ),
@@ -269,55 +279,63 @@ class WeekGrid extends StatelessWidget {
         const SizedBox(height: 7),
         SizedBox(
           height: _gridHeight,
-          child: Stack(
-            children: [
-              for (var hour = 0; hour <= 24; hour++)
-                Positioned(
-                  top: hour * 28.5,
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 40,
-                        child: Text(
-                          hour == 0 ? '24' : hour.toString().padLeft(2, '0'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 9,
-                            color: _calendarNavy,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const timeColumnWidth = 40.0;
+              final dayColumnWidth =
+                  (constraints.maxWidth - timeColumnWidth) / 7;
+              return Stack(
+                children: [
+                  for (var hour = 0; hour < 24; hour++)
+                    Positioned(
+                      top: hour * 28.5,
+                      left: 0,
+                      right: 0,
+                      height: 1,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: timeColumnWidth,
+                            child: Text(
+                              hour == 0
+                                  ? '24'
+                                  : hour.toString().padLeft(2, '0'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 9,
+                                color: _calendarNavy,
+                              ),
+                            ),
                           ),
-                        ),
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              color: const Color(0xFF9A9A9A),
+                            ),
+                          ),
+                        ],
                       ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: const Color(0xFF9A9A9A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              for (var dayIndex = 0; dayIndex < 7; dayIndex++)
-                for (final event in _eventsForDay(dayIndex))
-                  Positioned(
-                    left:
-                        42 +
-                        (dayIndex *
-                            (MediaQuery.sizeOf(context).width - 72) /
-                            7),
-                    width: (MediaQuery.sizeOf(context).width - 80) / 7,
-                    top: _timePosition(event.startTime),
-                    height: math.max(42, event.duration.inMinutes / 60 * 28.5),
-                    child: EventBlock(
-                      event: event,
-                      compact: true,
-                      onTap: () => onEventTap(event),
                     ),
-                  ),
-            ],
+                  for (var dayIndex = 0; dayIndex < 7; dayIndex++)
+                    for (final event in _eventsForDay(dayIndex))
+                      Positioned(
+                        left: timeColumnWidth + dayIndex * dayColumnWidth + 2,
+                        width: dayColumnWidth - 4,
+                        top: _timePosition(event.startTime),
+                        height: math.max(
+                          42,
+                          event.duration.inMinutes / 60 * 28.5,
+                        ),
+                        child: EventBlock(
+                          event: event,
+                          compact: true,
+                          onTap: () => onEventTap(event),
+                        ),
+                      ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -341,55 +359,62 @@ class _WeekDateCell extends StatelessWidget {
   const _WeekDateCell({
     required this.label,
     required this.date,
+    required this.selected,
     required this.events,
+    required this.onTap,
   });
 
   final String label;
   final DateTime date;
+  final bool selected;
   final List<CalendarEvent> events;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final selected = date.day == 15 && date.month == 10 && date.year == 2026;
-    return Container(
-      height: 45,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selected ? _calendarNavy : const Color(0xFFD9D9D9),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : _calendarNavy,
-            ),
-          ),
-          Text(
-            '${date.day}',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : _calendarNavy,
-            ),
-          ),
-          if (events.any((event) => _sameCalendarDate(event.date, date)))
-            Container(
-              width: 4,
-              height: 4,
-              margin: const EdgeInsets.only(top: 1),
-              decoration: const BoxDecoration(
-                color: Color(0xFFD64545),
-                shape: BoxShape.circle,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 45,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? _calendarNavy : const Color(0xFFD9D9D9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : _calendarNavy,
               ),
             ),
-        ],
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : _calendarNavy,
+              ),
+            ),
+            if (events.any((event) => _sameCalendarDate(event.date, date)))
+              Container(
+                width: 4,
+                height: 4,
+                margin: const EdgeInsets.only(top: 1),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD64545),
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -621,7 +646,7 @@ class _TimeButton extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        child: Text(time.format(context)),
+        child: Text(formatCalendarTime(time)),
       ),
     );
   }

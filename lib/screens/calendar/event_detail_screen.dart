@@ -297,7 +297,7 @@ class _EventSummaryCard extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                '${event.startTime.format(context)} - ${event.endTime.format(context)}'
+                '${formatCalendarTime(event.startTime)} - ${formatCalendarTime(event.endTime)}'
                 '${event.location.isEmpty ? '' : ' - ${event.location}'}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
