@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 
 enum _ReviewFilter { all, wrong }
 
-class QuizReviewScreen extends StatefulWidget {
+class QuizReviewScreen extends ConsumerStatefulWidget {
   const QuizReviewScreen({super.key, required this.result});
 
   final QuizResult result;
 
   @override
-  State<QuizReviewScreen> createState() => _QuizReviewScreenState();
+  ConsumerState<QuizReviewScreen> createState() => _QuizReviewScreenState();
 }
 
-class _QuizReviewScreenState extends State<QuizReviewScreen> {
+class _QuizReviewScreenState extends ConsumerState<QuizReviewScreen> {
   _ReviewFilter _filter = _ReviewFilter.all;
 
   @override
   Widget build(BuildContext context) {
-    final service = QuizService.instance;
-    final exam = service.examById(widget.result.examId);
-    final subject = exam == null ? null : service.subjectById(exam.subjectId);
-    final questions = service.questionsForExam(widget.result.examId);
+    final quiz = ref.read(quizUseCasesProvider);
+    final exam = quiz.examById(widget.result.examId);
+    final subject = exam == null ? null : quiz.subjectById(exam.subjectId);
+    final questions = quiz.questionsForExam(widget.result.examId);
     final filteredQuestions = [
       for (var index = 0; index < questions.length; index++)
         if (_filter == _ReviewFilter.all ||

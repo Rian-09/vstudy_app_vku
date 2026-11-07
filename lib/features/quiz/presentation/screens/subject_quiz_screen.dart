@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/quiz/presentation/widgets/quiz_widgets.dart';
 
-class SubjectQuizScreen extends StatelessWidget {
+class SubjectQuizScreen extends ConsumerWidget {
   const SubjectQuizScreen({super.key, required this.subjectId});
 
   final String subjectId;
 
   @override
-  Widget build(BuildContext context) {
-    final service = QuizService.instance;
-    final subject = service.subjectById(subjectId);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quiz = ref.read(quizUseCasesProvider);
+    final subject = quiz.subjectById(subjectId);
     if (subject == null) {
       return AuthBackground(
         child: SafeArea(
@@ -27,8 +28,8 @@ class SubjectQuizScreen extends StatelessWidget {
         ),
       );
     }
-    final exams = service.examsForSubject(subject.id);
-    final wrongQuestions = service.wrongQuestionsForSubject(subject.id);
+    final exams = quiz.examsForSubject(subject.id);
+    final wrongQuestions = quiz.wrongQuestionsForSubject(subject.id);
     return DefaultTabController(
       length: 3,
       child: AuthBackground(

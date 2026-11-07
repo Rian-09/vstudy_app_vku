@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'exam_detail_screen.dart';
@@ -61,14 +62,14 @@ class QuizNavigationHost extends StatelessWidget {
 
 enum _QuizFilter { all, practice, exams, wrong }
 
-class QuizHomeScreen extends StatefulWidget {
+class QuizHomeScreen extends ConsumerStatefulWidget {
   const QuizHomeScreen({super.key});
 
   @override
-  State<QuizHomeScreen> createState() => _QuizHomeScreenState();
+  ConsumerState<QuizHomeScreen> createState() => _QuizHomeScreenState();
 }
 
-class _QuizHomeScreenState extends State<QuizHomeScreen> {
+class _QuizHomeScreenState extends ConsumerState<QuizHomeScreen> {
   _QuizFilter _filter = _QuizFilter.all;
 
   static const _filterLabels = {
@@ -88,11 +89,11 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final service = QuizService.instance;
-    final subjects = service.allSubjects;
-    final results = QuizService.recentResults;
+    final quiz = ref.read(quizUseCasesProvider);
+    final subjects = quiz.subjects;
+    final results = quiz.recentResults;
     final wrongQuestions = subjects
-        .expand((subject) => service.wrongQuestionsForSubject(subject.id))
+        .expand((subject) => quiz.wrongQuestionsForSubject(subject.id))
         .toList(growable: false);
 
     return AuthBackground(
@@ -210,7 +211,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
                   Builder(
                     builder: (context) {
                       final result = results[index];
-                      final exam = service.examById(result.examId);
+                      final exam = quiz.examById(result.examId);
                       if (exam == null) return const SizedBox.shrink();
                       return ExamTile(exam: exam, onTap: () => _openExam(exam));
                     },

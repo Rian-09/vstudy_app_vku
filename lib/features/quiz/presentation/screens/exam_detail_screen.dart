@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/quiz/presentation/widgets/quiz_widgets.dart';
 
 enum _QuizMode { practice, timed }
 
-class ExamDetailScreen extends StatefulWidget {
+class ExamDetailScreen extends ConsumerStatefulWidget {
   const ExamDetailScreen({super.key, required this.examId});
 
   final String examId;
 
   @override
-  State<ExamDetailScreen> createState() => _ExamDetailScreenState();
+  ConsumerState<ExamDetailScreen> createState() => _ExamDetailScreenState();
 }
 
-class _ExamDetailScreenState extends State<ExamDetailScreen> {
+class _ExamDetailScreenState extends ConsumerState<ExamDetailScreen> {
   _QuizMode _mode = _QuizMode.practice;
 
   Future<void> _start() async {
@@ -32,8 +33,8 @@ class _ExamDetailScreenState extends State<ExamDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final service = QuizService.instance;
-    final exam = service.examById(widget.examId);
+    final quiz = ref.read(quizUseCasesProvider);
+    final exam = quiz.examById(widget.examId);
     if (exam == null) {
       return AuthBackground(
         child: SafeArea(
@@ -46,7 +47,7 @@ class _ExamDetailScreenState extends State<ExamDetailScreen> {
         ),
       );
     }
-    final subject = service.subjectById(exam.subjectId)!;
+    final subject = quiz.subjectById(exam.subjectId)!;
     return AuthBackground(
       child: SafeArea(
         child: Column(

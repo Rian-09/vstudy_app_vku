@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 
-class QuizResultScreen extends StatelessWidget {
+class QuizResultScreen extends ConsumerWidget {
   const QuizResultScreen({super.key, required this.result});
 
   final QuizResult result;
-
-  Exam? get _exam => QuizService.instance.examById(result.examId);
 
   String _durationLabel() {
     final seconds = result.durationSeconds > 0
@@ -42,11 +41,12 @@ class QuizResultScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final exam = _exam;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quiz = ref.read(quizUseCasesProvider);
+    final exam = quiz.examById(result.examId);
     final subject = exam == null
         ? null
-        : QuizService.instance.subjectById(exam.subjectId);
+        : quiz.subjectById(exam.subjectId);
     final percent = result.score.round();
     final performance = percent >= 85
         ? 'Xuất sắc'
@@ -55,7 +55,7 @@ class QuizResultScreen extends StatelessWidget {
         : percent >= 50
         ? 'Đạt'
         : 'Cần cố gắng';
-    final questions = QuizService.instance.questionsForExam(result.examId);
+    final questions = quiz.questionsForExam(result.examId);
     final topics = <String>[];
     for (final question in questions) {
       if (!topics.contains(question.topic)) topics.add(question.topic);

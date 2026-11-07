@@ -1,20 +1,21 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 
-class QuizChartScreen extends StatelessWidget {
+class QuizChartScreen extends ConsumerWidget {
   const QuizChartScreen({super.key, required this.result});
 
   final QuizResult result;
 
   @override
-  Widget build(BuildContext context) {
-    final exam = QuizService.instance.examById(result.examId);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final exam = ref.read(quizUseCasesProvider).examById(result.examId);
     final entries = result.topicTotalCounts.entries.toList();
     final percent = result.score.round();
     return AuthBackground(

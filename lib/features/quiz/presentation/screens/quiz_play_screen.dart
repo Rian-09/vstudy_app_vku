@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/domain/usecases/quiz_usecases.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
@@ -15,18 +17,18 @@ const _playGreenTint = Color(0xFFECFDF5);
 const _playRed = Color(0xFFE11D48);
 const _playRedTint = Color(0xFFFFF1F2);
 
-class QuizPlayScreen extends StatefulWidget {
+class QuizPlayScreen extends ConsumerStatefulWidget {
   const QuizPlayScreen({super.key, required this.examId, this.isTimed = false});
 
   final String examId;
   final bool isTimed;
 
   @override
-  State<QuizPlayScreen> createState() => _QuizPlayScreenState();
+  ConsumerState<QuizPlayScreen> createState() => _QuizPlayScreenState();
 }
 
-class _QuizPlayScreenState extends State<QuizPlayScreen> {
-  final QuizService _quiz = QuizService.instance;
+class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
+  late final QuizUseCases _quiz;
   final Set<int> _bookmarkedQuestions = {};
   Timer? _timer;
   late int _remainingSeconds;
@@ -42,6 +44,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   @override
   void initState() {
     super.initState();
+    _quiz = ref.read(quizUseCasesProvider);
     _quiz.startSession(widget.examId, timed: widget.isTimed);
     _remainingSeconds = _exam.durationMinutes * 60;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
