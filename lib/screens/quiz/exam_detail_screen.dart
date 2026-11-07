@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/quiz_models.dart';
 import '../../services/quiz_service.dart';
 import '../../theme/auth_theme.dart';
 import '../../widgets/auth_widgets.dart';
@@ -20,8 +21,13 @@ class _ExamDetailScreenState extends State<ExamDetailScreen> {
   _QuizMode _mode = _QuizMode.practice;
 
   Future<void> _start() async {
-    await Navigator.of(context)
-        .pushNamed<void>('/play-placeholder', arguments: widget.examId);
+    await Navigator.of(context).pushNamed<void>(
+      '/play',
+      arguments: QuizPlayArguments(
+        examId: widget.examId,
+        isTimed: _mode == _QuizMode.timed,
+      ),
+    );
   }
 
   @override

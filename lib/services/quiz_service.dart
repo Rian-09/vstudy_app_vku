@@ -295,6 +295,41 @@ class QuizService extends ChangeNotifier {
     return result;
   }
 
+  /// Starts a deterministic mock exam created by the AI assistant.
+  /// The generated exam intentionally uses the existing question bank so the
+  /// normal quiz, result, review and wrong-question flows remain shared.
+  String startAiGeneratedSession({
+    String title = 'Đề ôn tập AI',
+    int questionCount = 10,
+    int difficulty = 60,
+  }) {
+    final source = examById('philosophy-exam-3') ?? exams.first;
+    final id = 'ai-${DateTime.now().microsecondsSinceEpoch}';
+    final count = questionCount.clamp(1, 40);
+    final questions = List.generate(count, (index) {
+      final sourceQuestion = source.questions[index % source.questions.length];
+      return sourceQuestion.copyWith(
+        id: '$id-q${index + 1}',
+        examId: id,
+        previousAnswerIndex: null,
+        wrongCount: 0,
+      );
+    });
+    final generated = Exam(
+      id: id,
+      subjectId: source.subjectId,
+      title: title,
+      chapterTitle: 'Tạo bởi Trợ lý V-Study',
+      questionCount: questions.length,
+      durationMinutes: source.durationMinutes,
+      difficulty: difficulty,
+      questions: questions,
+    );
+    exams.add(generated);
+    startSession(id);
+    return id;
+  }
+
   int get totalQuestionCount =>
       exams.fold(0, (total, exam) => total + exam.questionCount);
 

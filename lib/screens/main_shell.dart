@@ -20,6 +20,16 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
+class MainShellNavigationArgs {
+  const MainShellNavigationArgs({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+}
+
 class _MainShellState extends State<MainShell> {
   static const _tabs = <_TabItem>[
     _TabItem('Lịch', 'assets/images/home/tab_calendar.svg'),
@@ -31,6 +41,11 @@ class _MainShellState extends State<MainShell> {
 
   late int _selectedIndex;
   late bool _showLibrary;
+
+  void _selectTab(int index) => setState(() {
+    _selectedIndex = index;
+    _showLibrary = false;
+  });
 
   @override
   void initState() {
@@ -66,10 +81,11 @@ class _MainShellState extends State<MainShell> {
                 tooltip: 'Trợ lý AI',
                 heroTag: 'home-ai-assistant',
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Trợ lý AI sắp ra mắt'),
-                      duration: Duration(seconds: 2),
+                  Navigator.of(context).pushNamed<void>(
+                    '/ai',
+                    arguments: MainShellNavigationArgs(
+                      selectedIndex: _selectedIndex,
+                      onSelected: _selectTab,
                     ),
                   );
                 },
@@ -85,26 +101,28 @@ class _MainShellState extends State<MainShell> {
               ),
             )
           : null,
-      bottomNavigationBar: _MainBottomNavigationBar(
-        items: _tabs,
+      bottomNavigationBar: MainShellBottomNavigationBar(
         selectedIndex: _selectedIndex,
-        onSelected: (index) => setState(() {
-          _selectedIndex = index;
-          _showLibrary = false;
-        }),
+        onSelected: _selectTab,
       ),
     );
   }
 }
 
-class _MainBottomNavigationBar extends StatelessWidget {
-  const _MainBottomNavigationBar({
-    required this.items,
+class MainShellBottomNavigationBar extends StatelessWidget {
+  const MainShellBottomNavigationBar({
     required this.selectedIndex,
     required this.onSelected,
   });
 
-  final List<_TabItem> items;
+  static const _items = <_TabItem>[
+    _TabItem('Lịch', 'assets/images/home/tab_calendar.svg'),
+    _TabItem('Quiz', 'assets/images/home/tab_quiz.svg'),
+    _TabItem('Trang chủ', 'assets/images/home/tab_home.svg'),
+    _TabItem('Thống kê', 'assets/images/home/tab_stats.svg'),
+    _TabItem('Tài liệu', 'assets/images/home/tab_documents.svg'),
+  ];
+
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
@@ -115,7 +133,7 @@ class _MainBottomNavigationBar extends StatelessWidget {
       height: 69 + bottomInset,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final itemWidth = constraints.maxWidth / items.length;
+          final itemWidth = constraints.maxWidth / _items.length;
           return Stack(
             clipBehavior: Clip.none,
             children: [
@@ -139,13 +157,13 @@ class _MainBottomNavigationBar extends StatelessWidget {
                 height: 46,
                 child: Row(
                   children: [
-                    for (var index = 0; index < items.length; index++)
+                    for (var index = 0; index < _items.length; index++)
                       SizedBox(
                         width: itemWidth,
                         child: index == 2
                             ? const SizedBox.shrink()
                             : _NavigationItem(
-                                item: items[index],
+                                item: _items[index],
                                 selected: selectedIndex == index,
                                 onTap: () => onSelected(index),
                               ),
@@ -161,7 +179,7 @@ class _MainBottomNavigationBar extends StatelessWidget {
                 child: Semantics(
                   button: true,
                   selected: selectedIndex == 2,
-                  label: items[2].label,
+                  label: _items[2].label,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -181,7 +199,7 @@ class _MainBottomNavigationBar extends StatelessWidget {
                             height: 62,
                           ),
                           SvgPicture.asset(
-                            items[2].iconAsset,
+                            _items[2].iconAsset,
                             width: 26,
                             height: 30,
                           ),

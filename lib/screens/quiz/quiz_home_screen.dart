@@ -6,7 +6,11 @@ import '../../services/quiz_service.dart';
 import '../../theme/auth_theme.dart';
 import '../../widgets/auth_widgets.dart';
 import 'exam_detail_screen.dart';
+import 'quiz_chart_screen.dart';
+import 'quiz_play_screen.dart';
+import 'quiz_result_screen.dart';
 import 'subject_quiz_screen.dart';
+import 'quiz_review_screen.dart';
 import 'widgets/quiz_widgets.dart';
 
 class QuizNavigationHost extends StatelessWidget {
@@ -25,9 +29,14 @@ class QuizNavigationHost extends StatelessWidget {
           '/exam' => ExamDetailScreen(
             examId: settings.arguments as String? ?? '',
           ),
-          '/play-placeholder' => QuizPartTwoPlaceholder(
-            examId: settings.arguments as String? ?? '',
+          '/play' => _playPage(settings),
+          '/quiz/result' => QuizResultScreen(
+            result: settings.arguments as QuizResult,
           ),
+          '/review' => QuizReviewScreen(
+            result: settings.arguments as QuizResult,
+          ),
+          '/chart' => QuizChartScreen(result: settings.arguments as QuizResult),
           _ => const QuizHomeScreen(),
         };
         return MaterialPageRoute<void>(
@@ -35,6 +44,17 @@ class QuizNavigationHost extends StatelessWidget {
           builder: (context) => page,
         );
       },
+    );
+  }
+
+  Widget _playPage(RouteSettings settings) {
+    final arguments = settings.arguments;
+    final playArguments = arguments is QuizPlayArguments
+        ? arguments
+        : QuizPlayArguments(examId: arguments as String? ?? '');
+    return QuizPlayScreen(
+      examId: playArguments.examId,
+      isTimed: playArguments.isTimed,
     );
   }
 }
@@ -248,48 +268,6 @@ class _QuizFilterChip extends StatelessWidget {
                 color: selected ? Colors.white : AuthColors.muted,
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class QuizPartTwoPlaceholder extends StatelessWidget {
-  const QuizPartTwoPlaceholder({super.key, required this.examId});
-
-  final String examId;
-
-  @override
-  Widget build(BuildContext context) {
-    final exam = QuizService.instance.examById(examId);
-    return AuthBackground(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 80),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    tooltip: 'Quay lại',
-                    icon: const Icon(Icons.arrow_back_ios_new),
-                  ),
-                  Expanded(
-                    child: Text(
-                      exam?.title ?? 'Làm bài',
-                      style: AuthTextStyles.label,
-                    ),
-                  ),
-                ],
-              ),
-              const Expanded(
-                child: Center(
-                  child: Text('Làm bài sẽ có trong phần tiếp theo.'),
-                ),
-              ),
-            ],
           ),
         ),
       ),

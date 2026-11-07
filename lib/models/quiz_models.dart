@@ -77,9 +77,14 @@ class Question {
   bool get wasAnsweredIncorrectly =>
       previousAnswerIndex != null && previousAnswerIndex != correctIndex;
 
-  Question copyWith({int? previousAnswerIndex, int? wrongCount}) => Question(
-    id: id,
-    examId: examId,
+  Question copyWith({
+    String? id,
+    String? examId,
+    int? previousAnswerIndex,
+    int? wrongCount,
+  }) => Question(
+    id: id ?? this.id,
+    examId: examId ?? this.examId,
     topic: topic,
     chapterTitle: chapterTitle,
     text: text,

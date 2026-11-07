@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'models/calendar_event.dart';
+import 'screens/ai/ai_home_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/calendar/event_detail_screen.dart';
@@ -50,6 +51,11 @@ class MyApp extends StatelessWidget {
         },
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const MainShell(),
+        '/ai': (context) => AiNavigationHost(
+          shellArgs:
+              ModalRoute.of(context)?.settings.arguments
+                  as MainShellNavigationArgs?,
+        ),
         '/profile': (context) => const ProfileScreen(),
         '/edit-profile': (context) => const EditProfileScreen(),
         '/calendar': (context) => const MainShell(initialIndex: 0),

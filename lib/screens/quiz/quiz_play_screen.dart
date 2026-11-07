@@ -8,6 +8,7 @@ import '../../theme/auth_theme.dart';
 import '../../widgets/auth_widgets.dart';
 import '../../widgets/profile_dialogs.dart';
 import 'submit_confirm_dialog.dart';
+import 'quiz_result_screen.dart';
 
 const _playGreen = Color(0xFF059669);
 const _playGreenTint = Color(0xFFECFDF5);
@@ -81,7 +82,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       ),
     );
     if (shouldExit == true && mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
+      // QuizNavigationHost owns the play route. Pop only that navigator so
+      // the user returns to ExamDetailScreen instead of leaving the app shell.
+      Navigator.of(context).pop();
     }
   }
 
@@ -107,10 +110,12 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   void _submitQuiz() {
     _timer?.cancel();
     final result = _quiz.submitQuiz();
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).pushReplacementNamed<void, void>('/quiz/result', arguments: result);
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/quiz/result'),
+        builder: (_) => QuizResultScreen(result: result),
+      ),
+    );
   }
 
   void _onPrimaryAction() {
