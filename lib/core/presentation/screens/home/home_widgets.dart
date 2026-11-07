@@ -57,8 +57,10 @@ class GreetingHeader extends StatelessWidget {
             onTap: onAvatarTap,
             customBorder: const CircleBorder(),
             child: ClipOval(
-              child: Image.asset(
-                avatarAsset,
+              child: Image(
+                image: avatarAsset.startsWith('http')
+                    ? NetworkImage(avatarAsset)
+                    : AssetImage(avatarAsset),
                 width: 46,
                 height: 46,
                 fit: BoxFit.cover,

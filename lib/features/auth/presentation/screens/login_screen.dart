@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.initialEmail});
 
   final String? initialEmail;
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   static final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
   late final TextEditingController _emailController;
   final _passwordController = TextEditingController();
@@ -37,17 +38,36 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _login() {
-    final success = AuthService.instance.login(
+  Future<void> _login() async {
+    final success = await ref.read(authControllerProvider.notifier).login(
       email: _emailController.text,
       password: _passwordController.text,
     );
+    if (!mounted) return;
     if (success) {
       Navigator.of(context).pushReplacementNamed<void, void>('/home');
       return;
     }
+    final error = ref.read(authControllerProvider).error;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Email hoặc mật khẩu không đúng')),
+      SnackBar(content: Text(error?.toString() ?? 'Không thể đăng nhập.')),
+    );
+  }
+
+  Future<void> _sendPasswordReset() async {
+    final success = await ref
+        .read(authControllerProvider.notifier)
+        .sendPasswordReset(_emailController.text);
+    if (!mounted) return;
+    final error = ref.read(authControllerProvider).error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Đã gửi email đặt lại mật khẩu.'
+              : error?.toString() ?? 'Không thể gửi email đặt lại mật khẩu.',
+        ),
+      ),
     );
   }
 
@@ -129,17 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       child: Align(
                                         alignment: Alignment.centerRight,
                                         child: TextButton(
-                                          onPressed: () {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Tính năng sẽ sớm khả dụng.',
-                                                ),
-                                              ),
-                                            );
-                                          },
+                                          onPressed: _sendPasswordReset,
                                           style: TextButton.styleFrom(
                                             foregroundColor: AuthColors.navy,
                                             textStyle: AuthTextStyles.label,
@@ -151,7 +161,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                     PrimaryButton(
                                       label: 'Đăng nhập',
-                                      onPressed: _isValid ? _login : null,
+                                      onPressed: _isValid &&
+                                              !ref
+                                                  .watch(authControllerProvider)
+                                                  .isLoading
+                                          ? _login
+                                          : null,
                                     ),
                                     const SizedBox(height: 8),
                                     const _OrDivider(),

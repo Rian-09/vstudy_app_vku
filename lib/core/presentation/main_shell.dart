@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../features/documents/presentation/screens/documents_screen.dart';
+import '../../../features/documents/presentation/screens/library_screen.dart';
+import '../../../features/progress/presentation/screens/stats_menu_screen.dart';
+import '../../../features/quiz/presentation/screens/quiz_home_screen.dart';
+import '../../../features/schedule/presentation/screens/calendar_screen.dart';
 import '../theme/auth_theme.dart';
 import '../widgets/auth_widgets.dart';
-import '../../features/schedule/presentation/screens/calendar_screen.dart';
-import '../../features/documents/presentation/screens/documents_screen.dart';
-import '../../features/documents/presentation/screens/library_screen.dart';
 import 'screens/home/home_screen.dart';
-import '../../features/quiz/presentation/screens/quiz_home_screen.dart';
-import '../../features/progress/presentation/screens/stats_menu_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key, this.initialIndex = 2, this.showLibrary = false});

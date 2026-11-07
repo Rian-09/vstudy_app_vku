@@ -1,31 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/auth/domain/entities/user_profile.dart';
+import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'package:flutter_application_1/features/auth/presentation/widgets/profile_widgets.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   static final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-  static final _fallbackUser = StudyUser(
-    name: 'Tom',
-    email: 'tom@vku.udn.vn',
-    className: '23SE4',
-    major: 'Công nghệ phần mềm',
-    birthday: DateTime(2005, 2, 18),
-    subjects: const ['UX/UI', 'Java', 'Giải tích', 'Python', 'Pháp luật'],
-    avatarAsset: 'assets/images/profile/profile_avatar.png',
-  );
 
-  late final StudyUser _originalUser;
+  late final UserProfile? _originalUser;
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _classController;
@@ -37,12 +30,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _originalUser = AuthService.instance.currentUser ?? _fallbackUser;
-    _nameController = TextEditingController(text: _originalUser.name);
-    _emailController = TextEditingController(text: _originalUser.email);
-    _classController = TextEditingController(text: _originalUser.className);
-    _majorController = TextEditingController(text: _originalUser.major);
-    _birthday = _originalUser.birthday;
+    _originalUser = ref.read(currentUserProvider);
+    final user = _originalUser;
+    _nameController = TextEditingController(text: user?.fullName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _classController = TextEditingController(text: user?.className ?? '');
+    _majorController = TextEditingController(text: user?.major ?? '');
+    _birthday = user?.birthday ?? DateTime.now();
     _birthdayController = TextEditingController(text: _formatDate(_birthday));
     for (final controller in [
       _nameController,
@@ -54,11 +48,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _updateValidity();
   }
 
-  bool get _hasChanges =>
-      _nameController.text.trim() != _originalUser.name ||
-      _classController.text.trim() != _originalUser.className ||
-      _majorController.text.trim() != _originalUser.major ||
-      _birthday != _originalUser.birthday;
+  bool get _hasChanges {
+    final user = _originalUser;
+    return user != null &&
+        (_nameController.text.trim() != user.fullName ||
+            _classController.text.trim() != user.className ||
+            _majorController.text.trim() != user.major ||
+            _birthday != user.birthday);
+  }
 
   void _updateValidity() {
     final isValidAndChanged =
@@ -98,19 +95,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveChanges() async {
-    if (!_isValidAndChanged) return;
-    final updatedUser = _originalUser.copyWith(
-      name: _nameController.text.trim(),
+    final originalUser = _originalUser;
+    if (!_isValidAndChanged || originalUser == null) return;
+    final updatedUser = originalUser.copyWith(
+      fullName: _nameController.text.trim(),
       className: _classController.text.trim(),
       major: _majorController.text.trim(),
       birthday: _birthday,
     );
-    if (!AuthService.instance.updateCurrentUser(updatedUser)) {
+    if (!await ref.read(authControllerProvider.notifier).updateProfile(updatedUser)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Không thể cập nhật hồ sơ.')),
       );
       return;
     }
+
+    if (!mounted) return;
 
     await showDialog<void>(
       context: context,
@@ -141,6 +142,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = _originalUser;
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text('Không tìm thấy hồ sơ người dùng.')),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AuthBackground(
@@ -151,7 +158,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 ProfileHeader(
-                  user: _originalUser,
+                  user: user,
                   showIdentity: false,
                   onBack: () => Navigator.of(context).maybePop(),
                   onEdit: () => ScaffoldMessenger.of(context).showSnackBar(

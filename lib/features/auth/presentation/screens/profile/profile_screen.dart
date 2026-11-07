@@ -1,38 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'package:flutter_application_1/features/auth/presentation/widgets/profile_widgets.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _darkMode = false;
   bool _deadlineReminders = true;
 
-  StudyUser get _user => AuthService.instance.currentUser ?? _defaultProfile;
-
-  static final _defaultProfile = StudyUser(
-    name: 'Tom',
-    email: 'tom@vku.udn.vn',
-    className: '23SE4',
-    major: 'Công nghệ phần mềm',
-    birthday: DateTime(2005, 2, 18),
-    subjects: ['UX/UI', 'Java', 'Giải tích', 'Python', 'Pháp luật'],
-    avatarAsset: 'assets/images/profile/profile_avatar.png',
-  );
-
   @override
   Widget build(BuildContext context) {
-    final user = _user;
+    final authState = ref.watch(authControllerProvider);
+    if (authState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final user = authState.valueOrNull;
+    if (user == null) {
+      return _AuthStatePage(
+        message: authState.error?.toString() ?? 'Bạn chưa đăng nhập.',
+        onBack: () => Navigator.of(context).maybePop(),
+      );
+    }
     final features = <_FeatureData>[
       const _FeatureData(
         badge: 'feature_ai_badge.svg',
@@ -209,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _openEditProfile() async {
     await Navigator.of(context).pushNamed<void>('/edit-profile');
-    if (mounted) setState(() {});
+    if (mounted) await ref.read(authControllerProvider.notifier).loadCurrentUser();
   }
 
   void _openFeature(String title) {
@@ -233,7 +232,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (shouldLogout != true || !mounted) return;
 
-    AuthService.instance.clearSession();
+    final success = await ref.read(authControllerProvider.notifier).logout();
+    if (!mounted) return;
+    if (!success) {
+      _showMessage('Không thể đăng xuất.');
+      return;
+    }
     Navigator.of(context)
         .pushNamedAndRemoveUntil<void>('/login', (route) => false);
   }
@@ -241,6 +245,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+}
+
+class _AuthStatePage extends StatelessWidget {
+  const _AuthStatePage({required this.message, required this.onBack});
+
+  final String message;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: AuthBackground(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(message, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                TextButton(onPressed: onBack, child: const Text('Quay lại')),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,24 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/auth/data/datasources/auth_service.dart';
-import '../../../../core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'home_widgets.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final user = AuthService.instance.currentUser;
-    final storedName = AuthService.instance.currentUserName?.trim();
-    final userName = storedName == null || storedName.isEmpty
-        ? 'Tom'
-        : storedName;
+    final authState = ref.watch(authControllerProvider);
+    final user = authState.valueOrNull;
+    if (user == null) {
+      return AuthBackground(
+        child: Center(
+          child: Text(
+            authState.isLoading
+                ? 'Đang tải hồ sơ...'
+                : authState.error?.toString() ?? 'Không tìm thấy hồ sơ người dùng.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    final userName = user.fullName.trim();
 
     return AuthBackground(
       child: SafeArea(
@@ -32,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: GreetingHeader(
                   userName: userName,
                   avatarAsset:
-                      user?.avatarAsset ?? 'assets/images/home/home_avatar.png',
+                      user.avatarUrl ?? 'assets/images/home/home_avatar.png',
                   onAvatarTap: _openProfile,
                 ),
               ),

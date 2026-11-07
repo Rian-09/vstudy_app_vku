@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  static final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  static final _emailPattern = RegExp(r'^[^\s@]+@vku\.udn\.vn$');
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -50,16 +51,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _updateValidity();
   }
 
-  void _register() {
+  Future<void> _register() async {
     final email = _emailController.text.trim();
-    final success = AuthService.instance.register(
-      name: _nameController.text.trim(),
+    final success = await ref.read(authControllerProvider.notifier).register(
+      fullName: _nameController.text.trim(),
       email: email,
       password: _passwordController.text,
     );
+    if (!mounted) return;
     if (!success) {
+      final error = ref.read(authControllerProvider).error;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email này đã được đăng ký.')),
+        SnackBar(content: Text(error?.toString() ?? 'Không thể đăng ký.')),
       );
       return;
     }
@@ -187,7 +190,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     const SizedBox(height: 8),
                                     PrimaryButton(
                                       label: 'Tạo tài khoản',
-                                      onPressed: _isValid ? _register : null,
+                                      onPressed: _isValid &&
+                                              !ref
+                                                  .watch(authControllerProvider)
+                                                  .isLoading
+                                          ? _register
+                                          : null,
                                     ),
                                   ],
                                 ),

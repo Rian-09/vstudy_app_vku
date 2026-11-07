@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'features/schedule/data/models/calendar_event.dart';
 import 'features/ai_planner/presentation/screens/ai_home_screen.dart';
@@ -12,7 +14,13 @@ import 'features/auth/presentation/screens/profile/edit_profile_screen.dart';
 import 'features/auth/presentation/screens/profile/profile_screen.dart';
 import 'core/presentation/screens/splash/splash_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  const url = String.fromEnvironment('SUPABASE_URL');
+  const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  if (url.isNotEmpty && anonKey.isNotEmpty) {
+    await Supabase.initialize(url: url, publishableKey: anonKey);
+  }
   runApp(const MyApp());
 }
 
@@ -22,7 +30,8 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ProviderScope(
+      child: MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.
@@ -74,6 +83,7 @@ class MyApp extends StatelessWidget {
         '/documents/library': (context) =>
             const MainShell(initialIndex: 4, showLibrary: true),
       },
+      ),
     );
   }
 }

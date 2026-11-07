@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/auth/domain/entities/user_profile.dart';
 
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
@@ -14,7 +14,7 @@ class ProfileHeader extends StatelessWidget {
     this.showIdentity = true,
   });
 
-  final StudyUser user;
+  final UserProfile user;
   final VoidCallback onBack;
   final VoidCallback onEdit;
   final bool showIdentity;
@@ -63,19 +63,25 @@ class ProfileHeader extends StatelessWidget {
                           ),
                         ),
                         child: ClipOval(
-                          child: Image.asset(
-                            user.avatarAsset,
-                            fit: BoxFit.cover,
-                            semanticLabel: 'Ảnh đại diện',
-                            errorBuilder: (context, error, stackTrace) =>
-                                const ColoredBox(
-                                  color: Color(0xFFDDE2EE),
-                                  child: Icon(
-                                    Icons.person_outline,
-                                    color: AuthColors.navy,
-                                  ),
+                          child: user.avatarUrl == null
+                              ? Image.asset(
+                                  'assets/images/profile/profile_avatar.png',
+                                  fit: BoxFit.cover,
+                                  semanticLabel: 'Ảnh đại diện',
+                                )
+                              : Image.network(
+                                  user.avatarUrl!,
+                                  fit: BoxFit.cover,
+                                  semanticLabel: 'Ảnh đại diện',
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const ColoredBox(
+                                        color: Color(0xFFDDE2EE),
+                                        child: Icon(
+                                          Icons.person_outline,
+                                          color: AuthColors.navy,
+                                        ),
+                                      ),
                                 ),
-                          ),
                         ),
                       ),
                     ),
@@ -117,7 +123,7 @@ class ProfileHeader extends StatelessWidget {
         ),
         if (showIdentity) ...[
           const SizedBox(height: 10),
-          Text(user.name, style: _ProfileStyles.name),
+          Text(user.fullName, style: _ProfileStyles.name),
           const SizedBox(height: 3),
           Text(
             [
