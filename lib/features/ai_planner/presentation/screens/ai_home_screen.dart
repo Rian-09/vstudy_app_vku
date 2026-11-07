@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/ai_planner/data/datasources/ai_service.dart';
+import 'package:flutter_application_1/features/ai_planner/domain/usecases/ai_planner_usecases.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/presentation/main_shell.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_chart_screen.dart';

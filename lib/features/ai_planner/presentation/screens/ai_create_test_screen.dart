@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
-import 'package:flutter_application_1/features/ai_planner/data/datasources/ai_service.dart';
+import 'package:flutter_application_1/features/ai_planner/domain/usecases/ai_planner_usecases.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/ai_planner/presentation/widgets/ai_widgets.dart';
 
