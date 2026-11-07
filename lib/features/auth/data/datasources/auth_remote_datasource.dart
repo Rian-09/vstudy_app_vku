@@ -95,7 +95,7 @@ class SupabaseAuthDataSource implements AuthRemoteDataSource {
     final user = _client.auth.currentUser;
     if (user == null) return null;
     final row = await _client
-        .from('users')
+        .from('profiles')
         .select()
         .eq('id', user.id)
         .maybeSingle();
@@ -106,8 +106,15 @@ class SupabaseAuthDataSource implements AuthRemoteDataSource {
   @override
   Future<UserProfileModel> updateProfile(UserProfileModel profile) async {
     final row = await _client
-        .from('users')
-        .update(profile.toJson())
+        .from('profiles')
+        .update({
+          'full_name': profile.fullName,
+          'class_name': profile.className,
+          'major': profile.major,
+          'birthday': profile.birthday?.toIso8601String(),
+          'cohort': profile.cohort,
+          'avatar_url': profile.avatarUrl,
+        })
         .eq('id', profile.id)
         .select()
         .single();
