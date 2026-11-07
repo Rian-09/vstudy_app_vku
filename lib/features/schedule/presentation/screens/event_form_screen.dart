@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
-import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
 import 'package:flutter_application_1/features/schedule/presentation/widgets/calendar_widgets.dart';
 
 const _formNavy = Color(0xFF1F2A44);
 
-class EventFormScreen extends StatefulWidget {
+class EventFormScreen extends ConsumerStatefulWidget {
   const EventFormScreen({super.key, this.event});
 
   final CalendarEvent? event;
 
   @override
-  State<EventFormScreen> createState() => _EventFormScreenState();
+  ConsumerState<EventFormScreen> createState() => _EventFormScreenState();
 }
 
-class _EventFormScreenState extends State<EventFormScreen> {
+class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _subjectController;
   late final TextEditingController _locationController;
@@ -152,7 +153,6 @@ class _EventFormScreenState extends State<EventFormScreen> {
       return;
     }
 
-    final service = CalendarService.instance;
     final savedEvent = CalendarEvent(
       id: widget.event?.id ?? 'event-${DateTime.now().microsecondsSinceEpoch}',
       title: _titleController.text.trim(),
@@ -168,10 +168,17 @@ class _EventFormScreenState extends State<EventFormScreen> {
       reminder: _reminder,
       checklist: widget.event?.checklist ?? const [],
     );
-    if (_isEditing) {
-      service.updateEvent(savedEvent);
-    } else {
-      service.addEvent(savedEvent);
+    final success = _isEditing
+        ? await ref.read(scheduleControllerProvider.notifier).update(savedEvent)
+        : await ref.read(scheduleControllerProvider.notifier).add(savedEvent);
+    if (!success || !mounted) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể lưu lịch.')),
+        );
+      }
+      return;
     }
 
     await showDialog<void>(

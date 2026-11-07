@@ -1,38 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
-import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
 
 const _detailNavy = Color(0xFF1F2A44);
 const _detailGold = Color(0xFFC9A227);
 
-class EventDetailScreen extends StatefulWidget {
+class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({super.key, required this.eventId});
 
   final String eventId;
 
   @override
-  State<EventDetailScreen> createState() => _EventDetailScreenState();
+  ConsumerState<EventDetailScreen> createState() => _EventDetailScreenState();
 }
 
-class _EventDetailScreenState extends State<EventDetailScreen> {
+class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   late List<bool> _checkedItems;
-  late CalendarEvent _lastKnownEvent;
+  CalendarEvent? _lastKnownEvent;
 
-  CalendarEvent get _event =>
-      CalendarService.instance.eventById(widget.eventId) ?? _lastKnownEvent;
+  CalendarEvent? get _event => _lastKnownEvent;
 
   @override
   void initState() {
     super.initState();
-    _lastKnownEvent =
-        CalendarService.instance.eventById(widget.eventId) ??
-        CalendarService.instance.events.first;
-    _checkedItems = List<bool>.filled(_lastKnownEvent.checklist.length, true);
+    _lastKnownEvent = ref.read(scheduleControllerProvider).valueOrNull
+        ?.where((event) => event.id == widget.eventId)
+        .firstOrNull;
+    _checkedItems = List<bool>.filled(_lastKnownEvent?.checklist.length ?? 0, true);
   }
 
   Future<void> _edit() async {
@@ -40,8 +40,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         .pushNamed('/calendar/event-form', arguments: _event);
     if (mounted) {
       setState(() {
-        _lastKnownEvent =
-            CalendarService.instance.eventById(widget.eventId) ??
+        _lastKnownEvent = ref.read(scheduleControllerProvider).valueOrNull
+            ?.where((event) => event.id == widget.eventId)
+            .firstOrNull ??
             _lastKnownEvent;
       });
     }
@@ -49,6 +50,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _delete() async {
     final event = _event;
+    if (event == null) return;
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => ConfirmDialog(
@@ -62,7 +64,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
     if (shouldDelete != true || !mounted) return;
 
-    CalendarService.instance.deleteEvent(event.id);
+    final success = await ref.read(scheduleControllerProvider.notifier).delete(event.id);
+    if (!success || !mounted) return;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -76,11 +79,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: CalendarService.instance,
-      builder: (context, child) {
-        final event = _event;
-        return Scaffold(
+    final event = _event;
+    if (event == null) {
+      final scheduleState = ref.watch(scheduleControllerProvider);
+      return scheduleState.when(
+        loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+        error: (error, _) => Scaffold(body: Center(child: Text('Không thể tải lịch: $error'))),
+        data: (_) => const Scaffold(body: Center(child: Text('Không tìm thấy lịch này.'))),
+      );
+    }
+    return Scaffold(
           backgroundColor: Colors.transparent,
           body: AuthBackground(
             child: SafeArea(
@@ -170,8 +178,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ),
           ),
-        );
-      },
     );
   }
 }

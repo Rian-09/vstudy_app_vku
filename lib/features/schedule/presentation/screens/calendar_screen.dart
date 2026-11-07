@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
-import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
 import 'package:flutter_application_1/features/schedule/presentation/widgets/calendar_widgets.dart';
 
 const _calendarNavy = Color(0xFF1F2A44);
 
-class CalendarScreen extends StatefulWidget {
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   CalendarViewMode _mode = CalendarViewMode.day;
   DateTime _selectedDate = DateTime(2026, 10, 15);
 
@@ -62,11 +63,147 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheduleState = ref.watch(scheduleControllerProvider);
     return AuthBackground(
       child: SafeArea(
-        child: AnimatedBuilder(
-          animation: CalendarService.instance,
-          builder: (context, child) {
+        child: scheduleState.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(
+            child: Text(
+              'Không thể tải lịch: $error',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          data: (events) {
+            final dayEvents = events.where((event) => _sameDate(event.date, _selectedDate)).toList()
+              ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+            final weekEnd = _weekStart.add(const Duration(days: 6));
+            final weekEvents = events.where((event) =>
+                !_dateOnly(event.date).isBefore(_dateOnly(_weekStart)) &&
+                !_dateOnly(event.date).isAfter(_dateOnly(weekEnd))).toList();
+            final monthStart = DateTime(_selectedDate.year, _selectedDate.month, 1);
+            final monthEnd = DateTime(_selectedDate.year, _selectedDate.month + 1, 0);
+            final monthEvents = events.where((event) =>
+                !_dateOnly(event.date).isBefore(monthStart) &&
+                !_dateOnly(event.date).isAfter(monthEnd)).toList();
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 80),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (events.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text('Chưa có lịch học hoặc deadline.'),
+                    ),
+                  _CalendarTop(
+                    selectedDate: _selectedDate,
+                    onAdd: _openAddForm,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: CalendarModeSwitch(
+                      mode: _mode,
+                      onChanged: (mode) => setState(() => _mode = mode),
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  if (_mode == CalendarViewMode.day)
+                    _WeekDateStrip(
+                      weekStart: _weekStart,
+                      selectedDate: _selectedDate,
+                      events: weekEvents,
+                      onSelect: (date) => setState(() => _selectedDate = date),
+                    ),
+                  if (_mode == CalendarViewMode.day) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 6, 20, 7),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${_weekdayName(_selectedDate.weekday)}, ${_selectedDate.day}/${_selectedDate.month} · còn ${dayEvents.where((event) => event.type == CalendarEventType.selfStudy).length} buổi tự học',
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                color: Color(0xFF1F2A44),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _movePeriod(-1),
+                            tooltip: 'Ngày trước',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                            icon: const Icon(Icons.chevron_left, color: _calendarNavy, size: 20),
+                          ),
+                          IconButton(
+                            onPressed: () => _movePeriod(1),
+                            tooltip: 'Ngày sau',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                            icon: const Icon(Icons.chevron_right, color: _calendarNavy, size: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                    DayTimeline(events: dayEvents, onEventTap: _openEvent, onAddTap: _openAddForm),
+                  ] else if (_mode == CalendarViewMode.week) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 7),
+                      child: _PeriodNavigator(label: _periodLabel, onPrevious: () => _movePeriod(-1), onNext: () => _movePeriod(1)),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: WeekGrid(
+                        weekStart: _weekStart,
+                        selectedDate: _selectedDate,
+                        events: weekEvents,
+                        onEventTap: _openEvent,
+                        onDaySelected: (date) => setState(() => _selectedDate = date),
+                      ),
+                    ),
+                  ] else ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 15),
+                      child: _PeriodNavigator(label: _periodLabel, onPrevious: () => _movePeriod(-1), onNext: () => _movePeriod(1)),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: MonthGrid(
+                        month: _selectedDate,
+                        selectedDate: _selectedDate,
+                        events: monthEvents,
+                        onDaySelected: (date) => setState(() {
+                          _selectedDate = date;
+                          _mode = CalendarViewMode.day;
+                        }),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 15, 20, 8),
+                      child: _SelectedDayEvents(date: _selectedDate, events: dayEvents, onEventTap: _openEvent),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  const _CalendarLegend(),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  static DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+  static bool _sameDate(DateTime first, DateTime second) =>
+      first.year == second.year && first.month == second.month && first.day == second.day;
+}
+
+/*
             final service = CalendarService.instance;
             final dayEvents = service.eventsForDate(_selectedDate);
             final weekEvents = service.eventsInRange(
@@ -215,6 +352,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 }
+*/
 
 class _CalendarTop extends StatelessWidget {
   const _CalendarTop({required this.selectedDate, required this.onAdd});
