@@ -7,25 +7,25 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/main.dart';
-import 'package:flutter_application_1/models/calendar_event.dart';
-import 'package:flutter_application_1/models/document.dart';
-import 'package:flutter_application_1/screens/calendar/calendar_screen.dart';
-import 'package:flutter_application_1/screens/calendar/event_detail_screen.dart';
-import 'package:flutter_application_1/screens/calendar/event_form_screen.dart';
-import 'package:flutter_application_1/screens/documents/document_viewer_screen.dart';
-import 'package:flutter_application_1/screens/documents/documents_screen.dart';
-import 'package:flutter_application_1/screens/documents/library_screen.dart';
-import 'package:flutter_application_1/screens/documents/widgets/document_widgets.dart';
-import 'package:flutter_application_1/screens/main_shell.dart';
-import 'package:flutter_application_1/screens/profile/edit_profile_screen.dart';
-import 'package:flutter_application_1/screens/profile/profile_screen.dart';
-import 'package:flutter_application_1/screens/quiz/exam_detail_screen.dart';
-import 'package:flutter_application_1/screens/quiz/quiz_home_screen.dart';
-import 'package:flutter_application_1/screens/quiz/subject_quiz_screen.dart';
-import 'package:flutter_application_1/services/auth_service.dart';
-import 'package:flutter_application_1/services/calendar_service.dart';
-import 'package:flutter_application_1/services/quiz_service.dart';
-import 'package:flutter_application_1/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
+import 'package:flutter_application_1/features/documents/data/models/document.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/calendar_screen.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/event_detail_screen.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/event_form_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/screens/document_viewer_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/screens/documents_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/screens/library_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/core/presentation/main_shell.dart';
+import 'package:flutter_application_1/features/auth/presentation/screens/profile/edit_profile_screen.dart';
+import 'package:flutter_application_1/features/auth/presentation/screens/profile/profile_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/exam_detail_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_home_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/subject_quiz_screen.dart';
+import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
+import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
+import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

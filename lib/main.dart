@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-import 'models/calendar_event.dart';
-import 'screens/ai/ai_home_screen.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/register_screen.dart';
-import 'screens/calendar/event_detail_screen.dart';
-import 'screens/calendar/event_form_screen.dart';
-import 'screens/documents/document_viewer_screen.dart';
-import 'screens/main_shell.dart';
-import 'screens/profile/edit_profile_screen.dart';
-import 'screens/profile/profile_screen.dart';
-import 'screens/splash/splash_screen.dart';
+import 'features/schedule/data/models/calendar_event.dart';
+import 'features/ai_planner/presentation/screens/ai_home_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/auth/presentation/screens/register_screen.dart';
+import 'features/schedule/presentation/screens/event_detail_screen.dart';
+import 'features/schedule/presentation/screens/event_form_screen.dart';
+import 'features/documents/presentation/screens/document_viewer_screen.dart';
+import 'core/presentation/main_shell.dart';
+import 'features/auth/presentation/screens/profile/edit_profile_screen.dart';
+import 'features/auth/presentation/screens/profile/profile_screen.dart';
+import 'core/presentation/screens/splash/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
