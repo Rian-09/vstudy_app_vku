@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
 
 const _documentsGold = Color(0xFFDFA841);
 const _documentsNavy = Color(0xFF1E2A4A);
 
-class DocumentsScreen extends StatefulWidget {
+class DocumentsScreen extends ConsumerStatefulWidget {
   const DocumentsScreen({super.key});
 
   @override
-  State<DocumentsScreen> createState() => _DocumentsScreenState();
+  ConsumerState<DocumentsScreen> createState() => _DocumentsScreenState();
 }
 
-class _DocumentsScreenState extends State<DocumentsScreen> {
+class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _popularKey = GlobalKey();
@@ -82,14 +84,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final repository = ref.watch(documentRepositoryProvider);
+    final documentsUseCases = ref.read(documentUseCasesProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AuthBackground(
         child: SafeArea(
-          child: AnimatedBuilder(
-            animation: DocumentRepository.instance,
-            builder: (context, child) {
-              final allDocuments = DocumentRepository.instance.documents;
+          child: Builder(
+            builder: (context) {
+              final allDocuments = repository.documents;
               final documents = _filteredDocuments(allDocuments);
               final popular = documents.take(2).toList();
               final selected = documents.length > 2
@@ -152,8 +155,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                   document: document,
                                   onOpen: () => _openDocument(document),
                                   onDownload: () => _openDocument(document),
-                                  onToggleSaved: () => DocumentRepository
-                                      .instance
+                                  onToggleSaved: () => documentsUseCases
                                       .toggleSaved(document.id),
                                 );
                               },
@@ -177,7 +179,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                           document: selected[index],
                           onOpen: () => _openDocument(selected[index]),
                           onDownload: () => _openDocument(selected[index]),
-                          onToggleSaved: () => DocumentRepository.instance
+                          onToggleSaved: () => documentsUseCases
                               .toggleSaved(selected[index].id),
                         ),
                       ],

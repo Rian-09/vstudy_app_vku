@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
 
 const _viewerPages = [
   'assets/images/documents/viewer_page_1.png',
@@ -13,23 +15,22 @@ const _viewerPages = [
 ];
 const _viewerWarmText = Color(0xFF554336);
 
-class DocumentViewerScreen extends StatefulWidget {
+class DocumentViewerScreen extends ConsumerStatefulWidget {
   const DocumentViewerScreen({super.key, required this.documentId});
 
   final String documentId;
 
   @override
-  State<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
+  ConsumerState<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
 }
 
-class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
+class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
   bool _showAiHint = true;
 
-  StudyDocument get _document =>
-      DocumentRepository.instance.findById(widget.documentId) ??
-      DocumentRepository.instance.documents.first;
+  StudyDocument get _document => ref.read(documentUseCasesProvider).findById(widget.documentId) ??
+      ref.read(documentUseCasesProvider).documents.first;
 
   @override
   void dispose() {
@@ -48,7 +49,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     );
     if (started != true || !mounted) return;
 
-    DocumentRepository.instance.markDownloaded(document.id);
+    ref.read(documentUseCasesProvider).markDownloaded(document.id);
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -57,7 +58,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         document: _document,
         onViewNow: () => Navigator.of(dialogContext).pop(),
         onSaveToLibrary: () {
-          DocumentRepository.instance.saveToLibrary(document.id);
+          ref.read(documentUseCasesProvider).saveToLibrary(document.id);
           Navigator.of(dialogContext).pop();
           Navigator.of(context).pushNamed<void>('/documents/library');
         },
@@ -68,6 +69,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final documentUseCases = ref.read(documentUseCasesProvider);
     final document = _document;
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -79,7 +81,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                 document: document,
                 onBack: () => Navigator.of(context).maybePop(),
                 onToggleSaved: () =>
-                    DocumentRepository.instance.toggleSaved(document.id),
+                    documentUseCases.toggleSaved(document.id),
                 onOpenLibrary: () =>
                     Navigator.of(context).pushNamed('/documents/library'),
               ),
@@ -90,15 +92,12 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                       padding: const EdgeInsets.fromLTRB(21, 10, 21, 24),
                       child: Column(
                         children: [
-                          AnimatedBuilder(
-                            animation: DocumentRepository.instance,
-                            builder: (context, child) => _ViewerContextCard(
+                          _ViewerContextCard(
                               document: _document,
                               currentPage: _currentPage + 1,
-                              onToggleSaved: () => DocumentRepository.instance
+                              onToggleSaved: () => documentUseCases
                                   .toggleSaved(document.id),
                             ),
-                          ),
                           const SizedBox(height: 24),
                           Center(
                             child: SizedBox(

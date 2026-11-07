@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
 
 const _libraryGold = Color(0xFFDFA841);
 const _libraryNavy = Color(0xFF1F2A44);
 const _libraryCream = Color(0xFFF6EBC4);
 
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   static const _folders = [
     'Môn đại cương',
     'Chuyên ngành CNTT',
@@ -34,12 +36,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final repository = ref.watch(documentRepositoryProvider);
+    final documentUseCases = ref.read(documentUseCasesProvider);
     return AuthBackground(
       child: SafeArea(
-        child: AnimatedBuilder(
-          animation: DocumentRepository.instance,
-          builder: (context, child) {
-            final repository = DocumentRepository.instance;
+        child: Builder(
+          builder: (context) {
             final savedDocuments = repository.savedOrDownloaded;
             final popularDocuments = repository.documents.take(2).toList();
             final filteredDocuments = _selectedFolder == 0
@@ -140,7 +142,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           onOpen: () => _openDocument(document),
                           onDownload: () => _openDocument(document),
                           onToggleSaved: () =>
-                              repository.toggleSaved(document.id),
+                              documentUseCases.toggleSaved(document.id),
                         );
                       },
                     ),
