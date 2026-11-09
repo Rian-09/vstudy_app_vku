@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/quiz_models.dart';
@@ -397,9 +398,60 @@ class QuizService extends ChangeNotifier {
     );
     _lastResult = result;
     recentResults.insert(0, result);
+    unawaited(_persistResult(result, exam));
     notifyListeners();
     return result;
   }
+
+  Future<void> _persistResult(QuizResult result, Exam exam) async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null || !_isUuid(exam.id)) return;
+
+      final attempt = await client
+          .from('quiz_attempts')
+          .insert({
+            'owner_id': userId,
+            'quiz_id': exam.id,
+            'started_at': (_startedAt ?? result.completedAt)
+                .toUtc()
+                .toIso8601String(),
+            'completed_at': result.completedAt.toUtc().toIso8601String(),
+            'score': result.score,
+            'correct_count': result.correctCount,
+            'wrong_count': result.wrongCount,
+            'skipped_count': result.skippedCount,
+            'duration_seconds': result.durationSeconds,
+          })
+          .select('id')
+          .single();
+      final attemptId = attempt['id'] as String;
+      final answers = <Map<String, dynamic>>[];
+      for (var index = 0; index < exam.questions.length; index++) {
+        final answer = index < result.answers.length
+            ? result.answers[index]
+            : null;
+        answers.add({
+          'attempt_id': attemptId,
+          'question_id': exam.questions[index].id,
+          'selected_option_index': answer,
+          'is_correct': answer == null
+              ? null
+              : answer == exam.questions[index].correctIndex,
+        });
+      }
+      if (answers.isNotEmpty) {
+        await client.from('attempt_answers').insert(answers);
+      }
+    } catch (_) {
+      // The local result remains available when the network is unavailable.
+    }
+  }
+
+  static bool _isUuid(String value) => RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  ).hasMatch(value);
 
   /// Starts a deterministic mock exam created by the AI assistant.
   /// The generated exam intentionally uses the existing question bank so the
