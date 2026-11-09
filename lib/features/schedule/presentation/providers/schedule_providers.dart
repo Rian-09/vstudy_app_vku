@@ -10,6 +10,7 @@ import '../../data/repositories/schedule_repository_impl.dart';
 import '../../domain/entities/schedule_event.dart';
 import '../../domain/repositories/schedule_repository.dart';
 import '../../domain/usecases/schedule_usecases.dart';
+import '../../domain/usecases/filter_schedule_events_usecase.dart';
 
 final scheduleRepositoryProvider = Provider<ScheduleRepository>(
   (ref) {
@@ -37,6 +38,9 @@ final deleteScheduleEventUseCaseProvider = Provider(
 final updateScheduleStatusUseCaseProvider = Provider(
   (ref) => UpdateScheduleStatusUseCase(ref.watch(scheduleRepositoryProvider)),
 );
+final filterScheduleEventsUseCaseProvider = Provider(
+  (ref) => const FilterScheduleEventsUseCase(),
+);
 
 final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
     AsyncValue<List<CalendarEvent>>>((ref) {
@@ -47,6 +51,7 @@ final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
     deleteEvent: ref.watch(deleteScheduleEventUseCaseProvider),
     reminderService: ReminderService.instance,
     updateStatus: ref.watch(updateScheduleStatusUseCaseProvider),
+    filterEvents: ref.watch(filterScheduleEventsUseCaseProvider),
   );
   controller.load();
   return controller;
@@ -60,6 +65,7 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     required this._deleteEvent,
     required this._reminderService,
     required this._updateStatus,
+    required this._filterEvents,
   }) : super(const AsyncLoading());
 
   final GetScheduleEventsUseCase _getEvents;
@@ -68,12 +74,13 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
   final DeleteScheduleEventUseCase _deleteEvent;
   final ReminderService _reminderService;
   final UpdateScheduleStatusUseCase _updateStatus;
+  final FilterScheduleEventsUseCase _filterEvents;
 
   Future<void> load() async {
     state = const AsyncLoading();
     try {
       final events = await _getEvents();
-      state = AsyncData(events.map((event) => _toModel(event)).toList());
+      state = AsyncData(_sortedModels(events));
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -101,7 +108,7 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     try {
       await _updateStatus(id, status);
       final events = await _getEvents();
-      state = AsyncData(events.map(_toModel).toList());
+      state = AsyncData(_sortedModels(events));
       return true;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -113,13 +120,23 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     try {
       await action();
       final events = await _getEvents();
-      state = AsyncData(events.map((event) => _toModel(event)).toList());
+      state = AsyncData(_sortedModels(events));
       return true;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       return false;
     }
   }
+
+  List<CalendarEvent> filteredEvents(ScheduleEventFilter filter) {
+    final current = state.valueOrNull ?? const <CalendarEvent>[];
+    return _filterEvents(current.map(_toEntity), filter).map(_toModel).toList();
+  }
+
+  List<CalendarEvent> _sortedModels(List<ScheduleEvent> events) =>
+      _filterEvents(events, const ScheduleEventFilter())
+          .map(_toModel)
+          .toList(growable: false);
 }
 
 ScheduleEvent _toEntity(CalendarEvent event) => ScheduleEvent(
