@@ -253,7 +253,40 @@ class QuizService extends ChangeNotifier {
     if (remoteSubjects.isEmpty) return;
     subjects = remoteSubjects;
     exams = remoteExams;
+    await _hydrateAttemptHistory(client);
     notifyListeners();
+  }
+
+  Future<void> _hydrateAttemptHistory(SupabaseClient client) async {
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+    final rows = await client
+        .from('quiz_attempts')
+        .select()
+        .eq('owner_id', userId)
+        .order('completed_at', ascending: false);
+    final remoteResults = <QuizResult>[];
+    for (final raw in rows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      final completedAt = row['completed_at'] as String?;
+      if (completedAt == null) continue;
+      remoteResults.add(
+        QuizResult(
+          examId: row['quiz_id'] as String,
+          correctCount: (row['correct_count'] as num?)?.toInt() ?? 0,
+          wrongCount: (row['wrong_count'] as num?)?.toInt() ?? 0,
+          skippedCount: (row['skipped_count'] as num?)?.toInt() ?? 0,
+          durationMinutes:
+              ((row['duration_seconds'] as num?)?.toInt() ?? 0) ~/ 60,
+          durationSeconds: (row['duration_seconds'] as num?)?.toInt() ?? 0,
+          score: (row['score'] as num? ?? 0).toDouble(),
+          completedAt: DateTime.parse(completedAt).toLocal(),
+        ),
+      );
+    }
+    recentResults
+      ..clear()
+      ..addAll(remoteResults);
   }
 
   static String _subjectImage(String code) => switch (code) {
