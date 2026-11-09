@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'features/schedule/data/models/calendar_event.dart';
+import 'features/schedule/data/datasources/reminder_service.dart';
 import 'features/ai_planner/presentation/screens/ai_home_screen.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
   if (url.isNotEmpty && anonKey.isNotEmpty) {
     await Supabase.initialize(url: url, publishableKey: anonKey);
   }
+  await ReminderService.instance.initialize();
   runApp(const MyApp());
 }
 

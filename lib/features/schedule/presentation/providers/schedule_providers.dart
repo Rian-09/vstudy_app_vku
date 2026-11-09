@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/datasources/calendar_service.dart';
 import '../../data/datasources/schedule_datasource.dart';
+import '../../data/datasources/reminder_service.dart';
 import '../../data/models/calendar_event.dart';
 import '../../data/repositories/schedule_repository_impl.dart';
 import '../../domain/entities/schedule_event.dart';
@@ -41,6 +42,7 @@ final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
     addEvent: ref.watch(addScheduleEventUseCaseProvider),
     updateEvent: ref.watch(updateScheduleEventUseCaseProvider),
     deleteEvent: ref.watch(deleteScheduleEventUseCaseProvider),
+    reminderService: ReminderService.instance,
   );
   controller.load();
   return controller;
@@ -52,12 +54,14 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     required this._addEvent,
     required this._updateEvent,
     required this._deleteEvent,
+    required this._reminderService,
   }) : super(const AsyncLoading());
 
   final GetScheduleEventsUseCase _getEvents;
   final AddScheduleEventUseCase _addEvent;
   final UpdateScheduleEventUseCase _updateEvent;
   final DeleteScheduleEventUseCase _deleteEvent;
+  final ReminderService _reminderService;
 
   Future<void> load() async {
     state = const AsyncLoading();
@@ -69,10 +73,23 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     }
   }
 
-  Future<bool> add(CalendarEvent event) => _mutate(() => _addEvent(_toEntity(event)));
-  Future<bool> update(CalendarEvent event) =>
-      _mutate(() => _updateEvent(_toEntity(event)));
-  Future<bool> delete(String id) => _mutate(() => _deleteEvent(id));
+  Future<bool> add(CalendarEvent event) async {
+    final success = await _mutate(() => _addEvent(_toEntity(event)));
+    if (success) await _reminderService.scheduleFor(_toEntity(event));
+    return success;
+  }
+
+  Future<bool> update(CalendarEvent event) async {
+    final success = await _mutate(() => _updateEvent(_toEntity(event)));
+    if (success) await _reminderService.scheduleFor(_toEntity(event));
+    return success;
+  }
+
+  Future<bool> delete(String id) async {
+    final success = await _mutate(() => _deleteEvent(id));
+    if (success) await _reminderService.cancelFor(id);
+    return success;
+  }
 
   Future<bool> _mutate(Future<void> Function() action) async {
     try {
