@@ -7,6 +7,7 @@ for `auth.users.id`; there is no application-facing `public.users` table.
 
 1. `supabase/migrations/202611070001_create_profiles.sql`
 2. `supabase/migrations/202611090002_create_core_schema.sql`
+3. `supabase/migrations/202611090004_extend_deadlines_for_schedule.sql`
 
 Run both files in the Supabase SQL Editor, in this order. The second migration
 ends by requesting a PostgREST schema reload.

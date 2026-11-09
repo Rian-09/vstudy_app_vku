@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/datasources/calendar_service.dart';
+import '../../data/datasources/schedule_datasource.dart';
 import '../../data/models/calendar_event.dart';
 import '../../data/repositories/schedule_repository_impl.dart';
 import '../../domain/entities/schedule_event.dart';
@@ -9,7 +11,14 @@ import '../../domain/repositories/schedule_repository.dart';
 import '../../domain/usecases/schedule_usecases.dart';
 
 final scheduleRepositoryProvider = Provider<ScheduleRepository>(
-  (ref) => ScheduleRepositoryImpl(CalendarService.instance),
+  (ref) {
+    const url = String.fromEnvironment('SUPABASE_URL');
+    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+    final dataSource = url.isEmpty || anonKey.isEmpty
+        ? LocalScheduleDataSource(CalendarService.instance)
+        : SupabaseScheduleDataSource(Supabase.instance.client);
+    return ScheduleRepositoryImpl(dataSource);
+  },
 );
 
 final getScheduleEventsUseCaseProvider = Provider(
