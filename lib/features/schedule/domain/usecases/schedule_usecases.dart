@@ -30,3 +30,12 @@ class DeleteScheduleEventUseCase {
   final ScheduleRepository _repository;
   Future<void> call(String id) => _repository.deleteEvent(id);
 }
+
+class UpdateScheduleStatusUseCase {
+  const UpdateScheduleStatusUseCase(this._repository);
+
+  final ScheduleRepository _repository;
+
+  Future<void> call(String id, ScheduleEventStatus status) =>
+      _repository.updateStatus(id, status);
+}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 enum CalendarEventType { classSession, deadline, selfStudy, free }
 
 enum CalendarEventFormat { inClass, selfStudy, online, free }
+enum CalendarEventStatus { todo, inProgress, done }
 
 extension CalendarEventTypeLabel on CalendarEventType {
   String get label => switch (this) {
@@ -38,6 +39,7 @@ class CalendarEvent {
     required this.repeat,
     required this.reminder,
     required this.checklist,
+    this.status = CalendarEventStatus.todo,
   });
 
   final String id;
@@ -53,6 +55,7 @@ class CalendarEvent {
   final String repeat;
   final String reminder;
   final List<String> checklist;
+  final CalendarEventStatus status;
 
   CalendarEvent copyWith({
     String? title,
@@ -67,6 +70,7 @@ class CalendarEvent {
     String? repeat,
     String? reminder,
     List<String>? checklist,
+    CalendarEventStatus? status,
   }) {
     return CalendarEvent(
       id: id,
@@ -82,6 +86,7 @@ class CalendarEvent {
       repeat: repeat ?? this.repeat,
       reminder: reminder ?? this.reminder,
       checklist: checklist ?? this.checklist,
+      status: status ?? this.status,
     );
   }
 

@@ -21,4 +21,8 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
 
   @override
   Future<void> deleteEvent(String id) => _dataSource.deleteEvent(id);
+
+  @override
+  Future<void> updateStatus(String id, ScheduleEventStatus status) =>
+      _dataSource.updateStatus(id, status);
 }

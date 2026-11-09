@@ -19,6 +19,9 @@ extension CalendarEventMapper on CalendarEvent {
     repeat: repeat,
     reminder: reminder,
     checklist: checklist,
+    status: ScheduleEventStatus.values.firstWhere(
+      (item) => item.name == status.name,
+    ),
   );
 }
 
@@ -39,5 +42,8 @@ extension ScheduleEventMapper on ScheduleEvent {
     repeat: repeat,
     reminder: reminder,
     checklist: checklist,
+    status: CalendarEventStatus.values.firstWhere(
+      (item) => item.name == status.name,
+    ),
   );
 }

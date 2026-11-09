@@ -34,6 +34,9 @@ final updateScheduleEventUseCaseProvider = Provider(
 final deleteScheduleEventUseCaseProvider = Provider(
   (ref) => DeleteScheduleEventUseCase(ref.watch(scheduleRepositoryProvider)),
 );
+final updateScheduleStatusUseCaseProvider = Provider(
+  (ref) => UpdateScheduleStatusUseCase(ref.watch(scheduleRepositoryProvider)),
+);
 
 final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
     AsyncValue<List<CalendarEvent>>>((ref) {
@@ -43,6 +46,7 @@ final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
     updateEvent: ref.watch(updateScheduleEventUseCaseProvider),
     deleteEvent: ref.watch(deleteScheduleEventUseCaseProvider),
     reminderService: ReminderService.instance,
+    updateStatus: ref.watch(updateScheduleStatusUseCaseProvider),
   );
   controller.load();
   return controller;
@@ -55,6 +59,7 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     required this._updateEvent,
     required this._deleteEvent,
     required this._reminderService,
+    required this._updateStatus,
   }) : super(const AsyncLoading());
 
   final GetScheduleEventsUseCase _getEvents;
@@ -62,6 +67,7 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
   final UpdateScheduleEventUseCase _updateEvent;
   final DeleteScheduleEventUseCase _deleteEvent;
   final ReminderService _reminderService;
+  final UpdateScheduleStatusUseCase _updateStatus;
 
   Future<void> load() async {
     state = const AsyncLoading();
@@ -91,6 +97,18 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
     return success;
   }
 
+  Future<bool> updateStatus(String id, ScheduleEventStatus status) async {
+    try {
+      await _updateStatus(id, status);
+      final events = await _getEvents();
+      state = AsyncData(events.map(_toModel).toList());
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+
   Future<bool> _mutate(Future<void> Function() action) async {
     try {
       await action();
@@ -117,6 +135,7 @@ ScheduleEvent _toEntity(CalendarEvent event) => ScheduleEvent(
   repeat: event.repeat,
   reminder: event.reminder,
   checklist: event.checklist,
+  status: ScheduleEventStatus.values.byName(event.status.name),
 );
 
 CalendarEvent _toModel(ScheduleEvent event) => CalendarEvent(
@@ -133,4 +152,5 @@ CalendarEvent _toModel(ScheduleEvent event) => CalendarEvent(
   repeat: event.repeat,
   reminder: event.reminder,
   checklist: event.checklist,
+  status: CalendarEventStatus.values.byName(event.status.name),
 );

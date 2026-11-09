@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/schedule_event.dart';
+import '../models/calendar_event.dart';
 import '../models/schedule_event_mapper.dart';
 import 'calendar_service.dart';
 
@@ -10,6 +11,7 @@ abstract interface class ScheduleDataSource {
   Future<void> addEvent(ScheduleEvent event);
   Future<void> updateEvent(ScheduleEvent event);
   Future<void> deleteEvent(String id);
+  Future<void> updateStatus(String id, ScheduleEventStatus status);
 }
 
 class LocalScheduleDataSource implements ScheduleDataSource {
@@ -35,6 +37,17 @@ class LocalScheduleDataSource implements ScheduleDataSource {
 
   @override
   Future<void> deleteEvent(String id) async => _service.deleteEvent(id);
+
+  @override
+  Future<void> updateStatus(String id, ScheduleEventStatus status) async {
+    final event = _service.eventById(id);
+    if (event == null) return;
+    _service.updateEvent(
+      event.copyWith(
+        status: CalendarEventStatus.values.byName(status.name),
+      ),
+    );
+  }
 }
 
 class SupabaseScheduleDataSource implements ScheduleDataSource {
@@ -96,6 +109,15 @@ class SupabaseScheduleDataSource implements ScheduleDataSource {
         .eq('owner_id', _ownerId);
   }
 
+  @override
+  Future<void> updateStatus(String id, ScheduleEventStatus status) async {
+    await _client
+        .from('deadlines')
+        .update({'status': status.name})
+        .eq('id', id)
+        .eq('owner_id', _ownerId);
+  }
+
   ScheduleEvent _fromRow(Map<String, dynamic> row) {
     final startsAt = DateTime.parse(row['starts_at'] as String).toLocal();
     final endsAt = DateTime.parse(row['ends_at'] as String).toLocal();
@@ -116,6 +138,7 @@ class SupabaseScheduleDataSource implements ScheduleDataSource {
       repeat: row['repeat_rule'] as String? ?? 'Không lặp lại',
       reminder: row['reminder_label'] as String? ?? 'Không nhắc trước',
       checklist: checklist,
+      status: _statusFromRow(row['status'] as String?),
     );
   }
 
@@ -137,8 +160,10 @@ class SupabaseScheduleDataSource implements ScheduleDataSource {
       'repeat_rule': event.repeat,
       'reminder_label': event.reminder,
       'checklist': event.checklist,
-      'status': 'todo',
       'priority': _priorityFor(dueAt),
+      'status': event.status == ScheduleEventStatus.inProgress
+          ? 'in_progress'
+          : event.status.name,
     };
   }
 
@@ -148,4 +173,10 @@ class SupabaseScheduleDataSource implements ScheduleDataSource {
     if (remaining <= const Duration(days: 7)) return 'medium';
     return 'low';
   }
+
+  ScheduleEventStatus _statusFromRow(String? value) => switch (value) {
+    'in_progress' => ScheduleEventStatus.inProgress,
+    'done' => ScheduleEventStatus.done,
+    _ => ScheduleEventStatus.todo,
+  };
 }

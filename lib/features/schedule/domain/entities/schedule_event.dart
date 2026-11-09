@@ -1,6 +1,7 @@
 enum ScheduleEventType { classSession, deadline, selfStudy, free }
 
 enum ScheduleEventFormat { inClass, selfStudy, online, free }
+enum ScheduleEventStatus { todo, inProgress, done }
 
 class ScheduleEvent {
   const ScheduleEvent({
@@ -16,6 +17,7 @@ class ScheduleEvent {
     required this.repeat,
     required this.reminder,
     required this.checklist,
+    this.status = ScheduleEventStatus.todo,
   });
 
   final String id;
@@ -30,6 +32,7 @@ class ScheduleEvent {
   final String repeat;
   final String reminder;
   final List<String> checklist;
+  final ScheduleEventStatus status;
 
   ScheduleEvent copyWith({
     String? title,
@@ -43,6 +46,7 @@ class ScheduleEvent {
     String? repeat,
     String? reminder,
     List<String>? checklist,
+    ScheduleEventStatus? status,
   }) => ScheduleEvent(
     id: id,
     title: title ?? this.title,
@@ -56,5 +60,6 @@ class ScheduleEvent {
     repeat: repeat ?? this.repeat,
     reminder: reminder ?? this.reminder,
     checklist: checklist ?? this.checklist,
+    status: status ?? this.status,
   );
 }
