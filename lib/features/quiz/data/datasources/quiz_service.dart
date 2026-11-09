@@ -409,7 +409,7 @@ class QuizService extends ChangeNotifier {
         );
       }
     }
-    final elapsedSeconds = _startedAt == null
+    final elapsedSeconds = !_isTimed || _startedAt == null
         ? 0
         : DateTime.now().difference(_startedAt!).inSeconds;
     final elapsedMinutes = elapsedSeconds ~/ 60;

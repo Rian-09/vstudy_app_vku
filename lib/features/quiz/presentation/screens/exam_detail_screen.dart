@@ -136,15 +136,15 @@ class _ExamDetailScreenState extends ConsumerState<ExamDetailScreen> {
                     const SizedBox(height: 12),
                     _QuizModeTile(
                       title: 'Luyện tập',
-                      subtitle: 'Không tính giờ và không hiển thị đáp án',
+                      subtitle: 'Không tính giờ và kiểm tra đáp án từng câu',
                       image: 'assets/images/quiz/mode_practice.png',
                       selected: _mode == _QuizMode.practice,
                       onTap: () => setState(() => _mode = _QuizMode.practice),
                     ),
                     const SizedBox(height: 10),
                     _QuizModeTile(
-                      title: 'Luyện tập',
-                      subtitle: 'Tính giờ và kiểm tra đáp án mỗi câu',
+                      title: 'Thi',
+                      subtitle: 'Tính giờ và chỉ xem kết quả sau khi nộp',
                       image: 'assets/images/quiz/mode_timed.png',
                       selected: _mode == _QuizMode.timed,
                       onTap: () => setState(() => _mode = _QuizMode.timed),

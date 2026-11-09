@@ -32,7 +32,6 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
   final Set<int> _bookmarkedQuestions = {};
   Timer? _timer;
   late int _remainingSeconds;
-  int _elapsedSeconds = 0;
   bool _isShowingSubmit = false;
 
   Exam get _exam => _quiz.activeExam!;
@@ -47,22 +46,20 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
     _quiz = ref.read(quizUseCasesProvider);
     _quiz.startSession(widget.examId, timed: widget.isTimed);
     _remainingSeconds = _exam.durationMinutes * 60;
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      if (widget.isTimed) {
+    if (widget.isTimed) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
         if (_remainingSeconds <= 1) {
           setState(() => _remainingSeconds = 0);
           _timer?.cancel();
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _showSubmitConfirmation();
+            if (mounted) _submitQuiz();
           });
         } else {
           setState(() => _remainingSeconds--);
         }
-      } else {
-        setState(() => _elapsedSeconds++);
-      }
-    });
+      });
+    }
   }
 
   @override
@@ -104,7 +101,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
       unansweredCount: _questionCount - answeredCount,
       remainingTime: widget.isTimed
           ? _formatTime(_remainingSeconds)
-          : _formatTime(_elapsedSeconds),
+          : 'Không tính giờ',
     );
     _isShowingSubmit = false;
     if (shouldSubmit == true && mounted) _submitQuiz();
@@ -122,6 +119,15 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
   }
 
   void _onPrimaryAction() {
+    if (widget.isTimed) {
+      if (_isLastQuestion) {
+        _showSubmitConfirmation();
+      } else {
+        _quiz.nextQuestion();
+        setState(() {});
+      }
+      return;
+    }
     if (!_quiz.currentQuestionChecked) {
       if (_isLastQuestion && _quiz.selectedAnswer == null) {
         _showSubmitConfirmation();
@@ -149,16 +155,17 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
     setState(() {});
   }
 
-  String get _timerLabel =>
-      _formatTime(widget.isTimed ? _remainingSeconds : _elapsedSeconds);
+  String get _timerLabel => _formatTime(_remainingSeconds);
 
   @override
   Widget build(BuildContext context) {
     final subject = _quiz.subjectById(_exam.subjectId);
     final selectedAnswer = _quiz.selectedAnswer;
-    final isChecked = _quiz.currentQuestionChecked;
+    final isChecked = !widget.isTimed && _quiz.currentQuestionChecked;
     final progress = (_currentIndex + 1) / _questionCount;
-    final buttonLabel = isChecked
+    final buttonLabel = widget.isTimed
+        ? (_isLastQuestion ? 'Nộp bài' : 'Câu tiếp')
+        : isChecked
         ? (_isLastQuestion ? 'Nộp bài' : 'Câu tiếp')
         : (_isLastQuestion && selectedAnswer == null ? 'Nộp bài' : 'Kiểm tra');
 
@@ -207,7 +214,7 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
                             ),
                           ),
                           Text(
-                            widget.isTimed ? 'Luyện tập có giờ' : 'Luyện tập',
+                            widget.isTimed ? 'Thi' : 'Luyện tập',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 17,
@@ -310,9 +317,10 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
                       height: 48,
                       child: FilledButton.icon(
                         onPressed:
+                            widget.isTimed ||
                             _quiz.currentQuestionChecked ||
-                                _quiz.selectedAnswer != null ||
-                                _isLastQuestion
+                            _quiz.selectedAnswer != null ||
+                            _isLastQuestion
                             ? _onPrimaryAction
                             : null,
                         icon: Icon(
