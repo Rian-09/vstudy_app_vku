@@ -65,14 +65,19 @@ class SupabaseAuthDataSource implements AuthRemoteDataSource {
     required String password,
   }) async {
     await _client.auth.signInWithPassword(email: email, password: password);
+
+    final authUser = _client.auth.currentUser;
+    if (authUser?.emailConfirmedAt == null) {
+      await _client.auth.signOut();
+      throw const AuthException(
+        'Email chưa được xác minh. Vui lòng kiểm tra hộp thư VKU trước khi đăng nhập.',
+      );
+    }
+
     final profile = await currentUser();
     if (profile == null) {
       await _client.auth.signOut();
       throw const AuthException('Không tìm thấy hồ sơ người dùng.');
-    }
-    if (profile.isLocked) {
-      await _client.auth.signOut();
-      throw const AuthException('Tài khoản đã bị khóa.');
     }
     return profile;
   }
@@ -100,7 +105,11 @@ class SupabaseAuthDataSource implements AuthRemoteDataSource {
         .eq('id', user.id)
         .maybeSingle();
     if (row == null) return null;
-    return UserProfileModel.fromJson(row);
+    final profile = UserProfileModel.fromJson(row);
+    if (profile.isLocked) {
+      throw const AuthException('Tài khoản đã bị khóa.');
+    }
+    return profile;
   }
 
   @override
