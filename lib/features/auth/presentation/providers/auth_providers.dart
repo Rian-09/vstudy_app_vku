@@ -12,6 +12,7 @@ import 'package:flutter_application_1/features/auth/domain/usecases/logout_useca
 import 'package:flutter_application_1/features/auth/domain/usecases/password_usecases.dart';
 import 'package:flutter_application_1/features/auth/domain/usecases/register_usecase.dart';
 import 'package:flutter_application_1/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   const url = String.fromEnvironment('SUPABASE_URL');
@@ -67,9 +68,24 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
     );
     state = result.fold(
       (failure) => AsyncError(failure.message, StackTrace.current),
-      (user) => AsyncData(user),
+      (user) {
+        _hydrateQuizBank();
+        return AsyncData(user);
+      },
     );
     return result.isRight();
+  }
+
+  Future<void> _hydrateQuizBank() async {
+    try {
+      if (Supabase.instance.client.auth.currentUser != null) {
+        await QuizService.instance.hydrateFromSupabase(
+          Supabase.instance.client,
+        );
+      }
+    } catch (_) {
+      // Keep the bundled question bank when remote content is unavailable.
+    }
   }
 
   Future<bool> register({required String fullName, required String email, required String password}) async {

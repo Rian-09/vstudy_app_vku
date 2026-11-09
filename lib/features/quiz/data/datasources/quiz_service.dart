@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/quiz_models.dart';
 
@@ -33,7 +34,7 @@ class QuizService extends ChangeNotifier {
     return exam.questions[_currentQuestionIndex];
   }
 
-  static const subjects = [
+  static var subjects = <Subject>[
     Subject(
       id: 'philosophy',
       name: 'Triết học',
@@ -54,7 +55,7 @@ class QuizService extends ChangeNotifier {
     ),
   ];
 
-  static final exams = [
+  static var exams = <Exam>[
     _buildExam(
       id: 'philosophy-exam-1',
       subjectId: 'philosophy',
@@ -154,6 +155,111 @@ class QuizService extends ChangeNotifier {
       completedAt: DateTime(2026, 11, 2),
     ),
   ];
+
+  Future<void> hydrateFromSupabase(SupabaseClient client) async {
+    final subjectRows = await client
+        .from('subjects')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    final quizRows = await client
+        .from('quizzes')
+        .select()
+        .eq('is_published', true)
+        .order('created_at');
+    final questionRows = await client.from('quiz_questions').select();
+    final optionRows = await client.from('quiz_options').select();
+
+    final optionsByQuestion = <String, List<Map<String, dynamic>>>{};
+    for (final raw in optionRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      optionsByQuestion
+          .putIfAbsent(row['question_id'] as String, () => [])
+          .add(row);
+    }
+    final questionsByQuiz = <String, List<Question>>{};
+    for (final raw in questionRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      final options = optionsByQuestion[row['id'] as String] ?? const [];
+      final orderedOptions = [...options]
+        ..sort((first, second) =>
+            (first['option_index'] as int).compareTo(second['option_index'] as int));
+      if (orderedOptions.length != 4) continue;
+      final question = Question(
+        id: row['id'] as String,
+        examId: row['quiz_id'] as String,
+        topic: row['chapter_title'] as String? ?? 'Ôn tập',
+        chapterTitle: row['chapter_title'] as String? ?? 'Ôn tập',
+        text: row['question_text'] as String,
+        options: orderedOptions
+            .map((option) => option['option_text'] as String)
+            .toList(growable: false),
+        correctIndex: orderedOptions.indexWhere(
+          (option) => option['is_correct'] == true,
+        ),
+        explanation: row['explanation'] as String? ?? '',
+      );
+      questionsByQuiz.putIfAbsent(row['quiz_id'] as String, () => []).add(question);
+    }
+
+    final quizRowsBySubject = <String, List<Map<String, dynamic>>>{};
+    for (final raw in quizRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      quizRowsBySubject
+          .putIfAbsent(row['subject_id'] as String, () => [])
+          .add(row);
+    }
+    final remoteExams = <Exam>[];
+    for (final raw in quizRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      final questions = questionsByQuiz[row['id'] as String] ?? const [];
+      if (questions.isEmpty) continue;
+      remoteExams.add(
+        Exam(
+          id: row['id'] as String,
+          subjectId: row['subject_id'] as String,
+          title: row['title'] as String,
+          chapterTitle: row['description'] as String? ?? 'Ôn tập',
+          questionCount: questions.length,
+          durationMinutes: row['duration_minutes'] as int? ?? 30,
+          difficulty: 0,
+          questions: questions,
+        ),
+      );
+    }
+    if (remoteExams.isEmpty) return;
+
+    final remoteSubjects = <Subject>[];
+    for (final raw in subjectRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      final id = row['id'] as String;
+      final subjectExams = quizRowsBySubject[id] ?? const [];
+      final questionCount = remoteExams
+          .where((exam) => exam.subjectId == id)
+          .fold<int>(0, (total, exam) => total + exam.questions.length);
+      remoteSubjects.add(
+        Subject(
+          id: id,
+          name: row['name'] as String,
+          imageAsset: _subjectImage(row['code'] as String? ?? ''),
+          questionCount: questionCount,
+          examCount: subjectExams.length,
+          rating: 0,
+          progress: 0,
+        ),
+      );
+    }
+    if (remoteSubjects.isEmpty) return;
+    subjects = remoteSubjects;
+    exams = remoteExams;
+    notifyListeners();
+  }
+
+  static String _subjectImage(String code) => switch (code) {
+    'TRIET' => 'assets/images/quiz/subject_philosophy.png',
+    'PLDC' => 'assets/images/quiz/subject_law.png',
+    _ => 'assets/images/quiz/subject_philosophy.png',
+  };
 
   List<Subject> get allSubjects => subjects;
 
