@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../datasources/document_remote_datasource.dart';
 
 @immutable
 class StudyDocument {
@@ -17,6 +20,7 @@ class StudyDocument {
     required this.category,
     required this.downloads,
     required this.updatedAt,
+    this.filePath,
   });
 
   final String id;
@@ -33,11 +37,49 @@ class StudyDocument {
   final DocumentCategory category;
   final int downloads;
   final String updatedAt;
+  final String? filePath;
+
+  factory StudyDocument.fromSupabase(Map<String, dynamic> json) {
+    final subject = json['subjects'];
+    final subjectName = subject is Map<String, dynamic>
+        ? (subject['name'] as String? ?? 'Chưa phân loại')
+        : 'Chưa phân loại';
+    final categoryValue = json['category'] as String?;
+    final category = categoryValue == 'course'
+        ? DocumentCategory.course
+        : DocumentCategory.exam;
+    final fileType = (json['file_type'] as String? ?? 'Tài liệu').toUpperCase();
+    final updatedAtValue = json['updated_at'] as String?;
+    final updatedAt = updatedAtValue == null
+        ? ''
+        : _formatDate(DateTime.tryParse(updatedAtValue));
+
+    return StudyDocument(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Tài liệu chưa đặt tên',
+      subject: subjectName,
+      author: 'V-Study',
+      type: fileType,
+      size: _formatSize(json['file_size_bytes']),
+      pages: (json['page_count'] as num?)?.toInt() ?? 0,
+      thumbnail: category == DocumentCategory.course
+          ? 'assets/images/documents/slide_history.png'
+          : 'assets/images/documents/exam_history.png',
+      isDownloaded: false,
+      isSaved: false,
+      progress: 0,
+      category: category,
+      downloads: 0,
+      updatedAt: updatedAt,
+      filePath: json['file_path'] as String?,
+    );
+  }
 
   StudyDocument copyWith({
     bool? isDownloaded,
     bool? isSaved,
     double? progress,
+    String? filePath,
   }) {
     return StudyDocument(
       id: id,
@@ -54,7 +96,26 @@ class StudyDocument {
       category: category,
       downloads: downloads,
       updatedAt: updatedAt,
+      filePath: filePath ?? this.filePath,
     );
+  }
+
+  static String _formatSize(Object? bytes) {
+    final value = (bytes as num?)?.toDouble();
+    if (value == null || value <= 0) {
+      return '—';
+    }
+    if (value >= 1024 * 1024) {
+      return '${(value / 1024 / 1024).toStringAsFixed(1)}MB';
+    }
+    return '${(value / 1024).toStringAsFixed(0)}KB';
+  }
+
+  static String _formatDate(DateTime? date) {
+    if (date == null) {
+      return '';
+    }
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }
 
@@ -163,6 +224,16 @@ class DocumentRepository extends ChangeNotifier {
       updatedAt: '12/10/2024',
     ),
   ];
+
+  Future<void> hydrateFromSupabase() async {
+    final client = Supabase.instance.client;
+    final remote = await DocumentRemoteDataSource(client)
+        .fetchPublishedDocuments();
+    _documents
+      ..clear()
+      ..addAll(remote);
+    notifyListeners();
+  }
 
   List<StudyDocument> get documents => List.unmodifiable(_documents);
 

@@ -13,6 +13,7 @@ import 'package:flutter_application_1/features/auth/domain/usecases/password_use
 import 'package:flutter_application_1/features/auth/domain/usecases/register_usecase.dart';
 import 'package:flutter_application_1/features/auth/domain/usecases/update_profile_usecase.dart';
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/documents/data/models/document.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   const url = String.fromEnvironment('SUPABASE_URL');
@@ -54,7 +55,9 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
 
   Future<void> loadCurrentUser() async {
     state = const AsyncLoading();
-    final result = await _ref.read(getCurrentUserUseCaseProvider)(const NoParams());
+    final result = await _ref.read(getCurrentUserUseCaseProvider)(
+      const NoParams(),
+    );
     state = result.fold(
       (failure) => AsyncError(failure.message, StackTrace.current),
       AsyncData.new,
@@ -70,10 +73,21 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
       (failure) => AsyncError(failure.message, StackTrace.current),
       (user) {
         _hydrateQuizBank();
+        _hydrateDocuments();
         return AsyncData(user);
       },
     );
     return result.isRight();
+  }
+
+  Future<void> _hydrateDocuments() async {
+    try {
+      if (Supabase.instance.client.auth.currentUser != null) {
+        await DocumentRepository.instance.hydrateFromSupabase();
+      }
+    } catch (_) {
+      // Keep the local document catalogue when remote content is unavailable.
+    }
   }
 
   Future<void> _hydrateQuizBank() async {
@@ -88,7 +102,11 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
     }
   }
 
-  Future<bool> register({required String fullName, required String email, required String password}) async {
+  Future<bool> register({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
     state = const AsyncLoading();
     final result = await _ref.read(registerUseCaseProvider)(
       RegisterParams(fullName: fullName, email: email, password: password),
@@ -123,9 +141,10 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
       (await _ref.read(changePasswordUseCaseProvider)(password)).isRight();
 }
 
-final authControllerProvider = StateNotifierProvider<AuthController, AsyncValue<UserProfile?>>(
-  (ref) => AuthController(ref),
-);
+final authControllerProvider =
+    StateNotifierProvider<AuthController, AsyncValue<UserProfile?>>(
+      (ref) => AuthController(ref),
+    );
 
 final currentUserProvider = Provider<UserProfile?>((ref) {
   return ref.watch(authControllerProvider).valueOrNull;
