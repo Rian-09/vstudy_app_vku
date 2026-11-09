@@ -191,26 +191,34 @@ class DayTimeline extends StatelessWidget {
               top: hour * 28.5,
               left: 0,
               right: 0,
-              height: 1,
+              height: 28.5,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: 61,
-                    child: Text(
-                      hour == 0
-                          ? '24:00'
-                          : '${hour.toString().padLeft(2, '0')}:00',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 11,
-                        color: _calendarNavy,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Text(
+                        '${hour.toString().padLeft(2, '0')}:00',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          color: _calendarNavy,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Container(height: 1, color: const Color(0xFF9A9A9A)),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Container(
+                        height: 1,
+                        color: const Color(0xFF9A9A9A),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -291,27 +299,32 @@ class WeekGrid extends StatelessWidget {
                       top: hour * 28.5,
                       left: 0,
                       right: 0,
-                      height: 1,
+                      height: 28.5,
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SizedBox(
                             width: timeColumnWidth,
-                            child: Text(
-                              hour == 0
-                                  ? '24'
-                                  : hour.toString().padLeft(2, '0'),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 9,
-                                color: _calendarNavy,
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: Text(
+                                hour.toString().padLeft(2, '0'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 9,
+                                  color: _calendarNavy,
+                                ),
                               ),
                             ),
                           ),
                           Expanded(
-                            child: Container(
-                              height: 1,
-                              color: const Color(0xFF9A9A9A),
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: Container(
+                                height: 1,
+                                color: const Color(0xFF9A9A9A),
+                              ),
                             ),
                           ),
                         ],
