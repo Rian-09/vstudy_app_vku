@@ -1,6 +1,27 @@
 -- V-STUDY content seed. Run after both migrations.
--- Create admin@vku.udn.vn in Supabase Auth first, then set the variable below
--- to that verified email. This script never stores an admin password in Git.
+-- Create admin@vku.udn.vn in Supabase Auth first, then run this script as the
+-- database owner in the Supabase SQL Editor. This script never stores an
+-- admin password in Git.
+
+create or replace function public.seed_promote_user_to_admin(target_email text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform set_config('vstudy.seed_mode', 'on', true);
+  update public.profiles
+  set role = 'ADMIN', is_locked = false, updated_at = now()
+  where id = (
+    select id from auth.users
+    where lower(email) = lower(target_email)
+    limit 1
+  );
+end;
+$$;
+
+revoke all on function public.seed_promote_user_to_admin(text) from public;
 
 do $$
 declare
@@ -9,9 +30,7 @@ begin
   if not exists (select 1 from auth.users where lower(email) = lower(admin_email)) then
     raise notice 'Create % in Supabase Auth, verify it, then rerun this seed.', admin_email;
   else
-    update public.profiles
-    set role = 'ADMIN', is_locked = false, updated_at = now()
-    where id = (select id from auth.users where lower(email) = lower(admin_email) limit 1);
+    perform public.seed_promote_user_to_admin(admin_email);
   end if;
 end $$;
 

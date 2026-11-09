@@ -93,7 +93,11 @@ security definer
 set search_path = public
 as $$
 begin
-  if not public.is_admin_user() then
+  -- The seed script uses a locked-down transaction-local marker. It is only
+  -- available while running as a database owner/service administrator and is
+  -- never granted to the authenticated client role.
+  if current_setting('vstudy.seed_mode', true) is distinct from 'on'
+     and not public.is_admin_user() then
     if new.id <> old.id
        or new.email <> old.email
        or new.role <> old.role
