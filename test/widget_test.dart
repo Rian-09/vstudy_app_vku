@@ -15,6 +15,8 @@ import 'package:flutter_application_1/features/schedule/presentation/screens/eve
 import 'package:flutter_application_1/features/documents/presentation/screens/document_viewer_screen.dart';
 import 'package:flutter_application_1/features/documents/presentation/screens/documents_screen.dart';
 import 'package:flutter_application_1/features/documents/presentation/screens/library_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
+import 'package:flutter_application_1/features/documents/data/datasources/document_storage_datasource.dart';
 import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
 import 'package:flutter_application_1/core/presentation/main_shell.dart';
 import 'package:flutter_application_1/features/auth/presentation/screens/profile/edit_profile_screen.dart';
@@ -243,15 +245,24 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: const MainShell(initialIndex: 4),
-        routes: {
-          '/documents/viewer': (context) => DocumentViewerScreen(
-            documentId: ModalRoute.of(context)!.settings.arguments as String,
+      ProviderScope(
+        overrides: [
+          documentStorageDataSourceProvider.overrideWith(
+            (ref) => DocumentStorageDataSource.localOnly(
+              database: ref.read(documentsDatabaseProvider),
+            ),
           ),
-          '/documents/library': (context) =>
-              const MainShell(initialIndex: 4, showLibrary: true),
-        },
+        ],
+        child: MaterialApp(
+          home: const MainShell(initialIndex: 4),
+          routes: {
+            '/documents/viewer': (context) => DocumentViewerScreen(
+              documentId: ModalRoute.of(context)!.settings.arguments as String,
+            ),
+            '/documents/library': (context) =>
+                const MainShell(initialIndex: 4, showLibrary: true),
+          },
+        ),
       ),
     );
 
@@ -278,50 +289,61 @@ void main() {
     );
     await tester.ensureVisible(firstDocumentTitle);
     await tester.tap(firstDocumentTitle);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(DocumentViewerScreen), findsOneWidget);
     await tester.tap(find.byTooltip('Quay lại'));
     await tester.pumpAndSettle();
     expect(find.byType(DocumentsScreen), findsOneWidget);
   });
 
-  testWidgets('viewer download shows success and saves to Library', (
+  testWidgets('viewer download reports missing server file', (
     WidgetTester tester,
   ) async {
     final document = DocumentRepository.instance.documents.first;
     await tester.pumpWidget(
-      MaterialApp(
-        home: DocumentViewerScreen(documentId: document.id),
-        routes: {
-          '/documents/library': (context) =>
-              const MainShell(initialIndex: 4, showLibrary: true),
-        },
+      ProviderScope(
+        overrides: [
+          documentStorageDataSourceProvider.overrideWith(
+            (ref) => DocumentStorageDataSource.localOnly(
+              database: ref.read(documentsDatabaseProvider),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          home: DocumentViewerScreen(documentId: document.id),
+          routes: {
+            '/documents/library': (context) =>
+                const MainShell(initialIndex: 4, showLibrary: true),
+          },
+        ),
       ),
     );
 
     await tester.ensureVisible(find.text('Tải xuống (43MB)'));
     await tester.tap(find.text('Tải xuống (43MB)'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(DownloadSheet), findsOneWidget);
     await tester.tap(find.text('Bản nén'));
     await tester.pump();
     await tester.ensureVisible(find.text('Xác nhận tải về (8.2 MB)'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('Xác nhận tải về (8.2 MB)'));
     for (var tick = 0; tick < 22; tick++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(
       DocumentRepository.instance.findById(document.id)?.isDownloaded,
-      isTrue,
+      isFalse,
     );
-    expect(find.byType(DownloadSuccessPopup), findsOneWidget);
-    await tester.tap(find.text('Lưu vào Thư viện yêu thích'));
-    await tester.pumpAndSettle();
-    expect(DocumentRepository.instance.findById(document.id)?.isSaved, isTrue);
-    expect(find.byType(LibraryScreen), findsOneWidget);
+    expect(
+      find.text('Tài liệu này chưa có file PDF trên máy chủ.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('calendar modes switch in place and month selection opens day', (

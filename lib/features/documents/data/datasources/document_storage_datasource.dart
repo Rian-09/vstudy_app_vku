@@ -8,7 +8,10 @@ import '../models/document.dart';
 class DocumentStorageDataSource {
   DocumentStorageDataSource({required this._client, required this._database});
 
-  final SupabaseClient _client;
+  DocumentStorageDataSource.localOnly({required this._database})
+    : _client = null;
+
+  final SupabaseClient? _client;
   final DocumentsDatabase _database;
 
   Future<Uint8List> downloadAndCache({
@@ -16,7 +19,10 @@ class DocumentStorageDataSource {
     required String filePath,
     StudyDocument? document,
   }) async {
-    final bytes = await _client.storage.from('documents').download(filePath);
+    final client = _client;
+    final bytes = client == null
+        ? Uint8List(0)
+        : await client.storage.from('documents').download(filePath);
     await _database.savePdf(
       id: documentId,
       filePath: filePath,
