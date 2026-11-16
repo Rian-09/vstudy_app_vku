@@ -91,7 +91,9 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
                       ),
                     ),
                   ),
-                  _StatPill(label: 'Tăng 12%'),
+                  _StatPill(
+                    label: 'Quá hạn ${StatsService.overdueDeadlineCount}',
+                  ),
                 ],
               ),
               const SizedBox(height: 12),

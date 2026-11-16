@@ -12,6 +12,8 @@ class StatsService {
   final Map<DateTime, int> _remoteMinutesByDate = {};
   final Map<DateTime, List<StudyActivity>> _remoteActivitiesByDate = {};
   final Map<String, List<double>> _remoteDocumentProgressBySubject = {};
+  final Map<String, List<int>> _remoteDeadlineCountsBySubject = {};
+  int _remoteOverdueDeadlineCount = 0;
   int? _remoteAverageQuizScore;
   bool _remoteLoaded = false;
 
@@ -189,24 +191,46 @@ class StatsService {
   ];
 
   List<SubjectStudyStats> get subjects {
-    if (_remoteDocumentProgressBySubject.isEmpty) return _defaultSubjects;
-    return _remoteDocumentProgressBySubject.entries.map((entry) {
-      final progress = entry.value.isEmpty
+    if (_remoteDocumentProgressBySubject.isEmpty &&
+        _remoteDeadlineCountsBySubject.isEmpty) {
+      return _defaultSubjects;
+    }
+    final subjectNames = {
+      ..._remoteDocumentProgressBySubject.keys,
+      ..._remoteDeadlineCountsBySubject.keys,
+    };
+    return subjectNames.map((name) {
+      final progressValues = _remoteDocumentProgressBySubject[name] ?? const [];
+      final progress = progressValues.isEmpty
           ? 0.0
-          : entry.value.reduce((first, second) => first + second) /
-              entry.value.length;
+          : progressValues.reduce((first, second) => first + second) /
+              progressValues.length;
+      final deadlineCounts = _remoteDeadlineCountsBySubject[name] ?? const [0, 0];
       return SubjectStudyStats(
-        name: entry.key,
+        name: name,
         credits: 0,
         minutes: 0,
         quizScore: averageQuizScore,
         flashcardCount: 0,
-        completedExercises: 0,
-        totalExercises: 1,
-        chapters: [ChapterProgress(title: 'Tài liệu', progress: progress)],
+        completedExercises: deadlineCounts[0],
+        totalExercises: deadlineCounts[1],
+        chapters: progressValues.isEmpty
+            ? const []
+            : [ChapterProgress(title: 'Tài liệu', progress: progress)],
       );
     }).toList(growable: false);
   }
+
+  int get overdueDeadlineCount => _remoteLoaded
+      ? _remoteOverdueDeadlineCount
+      : CalendarService.instance.events
+          .where(
+            (event) =>
+                event.type == CalendarEventType.deadline &&
+                event.date.isBefore(DateTime.now()) &&
+                event.status != CalendarEventStatus.done,
+          )
+          .length;
 
   static const semesterInsights = [
     StudyInsight(
@@ -314,7 +338,10 @@ class StatsService {
   Future<void> hydrateFromSupabase(SupabaseClient client) async {
     final deadlineRows = await client
         .from('deadlines')
-        .select('title, subject_name, event_type, starts_at, ends_at, location')
+        .select(
+          'title, subject_name, event_type, starts_at, ends_at, location, '
+          'status, due_at',
+        )
         .order('starts_at');
     final attemptRows = await client
         .from('quiz_attempts')
@@ -327,9 +354,27 @@ class StatsService {
     _remoteMinutesByDate.clear();
     _remoteActivitiesByDate.clear();
     _remoteDocumentProgressBySubject.clear();
+    _remoteDeadlineCountsBySubject.clear();
+    _remoteOverdueDeadlineCount = 0;
     for (final raw in deadlineRows as List) {
       final row = Map<String, dynamic>.from(raw);
-      if (row['event_type'] == 'deadline') continue;
+      final subjectName = (row['subject_name'] as String?)?.trim();
+      if (row['event_type'] == 'deadline') {
+        final name = subjectName?.isNotEmpty == true ? subjectName! : 'Khác';
+        final counts = _remoteDeadlineCountsBySubject.putIfAbsent(
+          name,
+          () => [0, 0],
+        );
+        counts[1]++;
+        if (row['status'] == 'done') counts[0]++;
+        final dueAt = DateTime.tryParse(row['due_at'] as String? ?? '');
+        if (dueAt != null &&
+            dueAt.isBefore(DateTime.now()) &&
+            row['status'] != 'done') {
+          _remoteOverdueDeadlineCount++;
+        }
+        continue;
+      }
       final startsAt = DateTime.tryParse(row['starts_at'] as String? ?? '');
       final endsAt = DateTime.tryParse(row['ends_at'] as String? ?? '');
       if (startsAt == null || endsAt == null) continue;
@@ -385,6 +430,8 @@ class StatsService {
     _remoteMinutesByDate.clear();
     _remoteActivitiesByDate.clear();
     _remoteDocumentProgressBySubject.clear();
+    _remoteDeadlineCountsBySubject.clear();
+    _remoteOverdueDeadlineCount = 0;
   }
 
   DateTime _dateKey(DateTime value) => DateTime(value.year, value.month, value.day);

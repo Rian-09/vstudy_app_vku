@@ -57,6 +57,8 @@ class StatsUseCases {
   static const examSubjects = data.StatsService.examSubjects;
   static const examInsights = data.StatsService.examInsights;
   static List<SubjectStudyStats> get subjects => data.StatsService.instance.subjects;
+  static int get overdueDeadlineCount =>
+      data.StatsService.instance.overdueDeadlineCount;
   static const semesterInsights = data.StatsService.semesterInsights;
 }
 
