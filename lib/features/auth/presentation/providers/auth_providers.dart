@@ -14,6 +14,7 @@ import 'package:flutter_application_1/features/auth/domain/usecases/register_use
 import 'package:flutter_application_1/features/auth/domain/usecases/update_profile_usecase.dart';
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
+import 'package:flutter_application_1/features/progress/data/datasources/stats_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   const url = String.fromEnvironment('SUPABASE_URL');
@@ -91,6 +92,9 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
         await DocumentRepository.instance.hydrateFromSupabase();
         await DocumentRepository.instance.syncPendingChanges();
         DocumentRepository.instance.startAutoSync();
+        await StatsService.instance.hydrateFromSupabase(
+          Supabase.instance.client,
+        );
       }
     } catch (_) {
       await DocumentRepository.instance.hydrateFromCache();
@@ -138,7 +142,10 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
 
   Future<bool> logout() async {
     final result = await _ref.read(logoutUseCaseProvider)(const NoParams());
-    if (result.isRight()) state = const AsyncData(null);
+    if (result.isRight()) {
+      StatsService.instance.clearRemoteData();
+      state = const AsyncData(null);
+    }
     return result.isRight();
   }
 

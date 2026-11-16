@@ -2,11 +2,17 @@ import '../models/stats_models.dart';
 import '../../../schedule/data/datasources/calendar_service.dart';
 import '../../../schedule/data/models/calendar_event.dart';
 import '../../../quiz/data/datasources/quiz_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StatsService {
   StatsService._();
 
   static final StatsService instance = StatsService._();
+
+  final Map<DateTime, int> _remoteMinutesByDate = {};
+  final Map<DateTime, List<StudyActivity>> _remoteActivitiesByDate = {};
+  int? _remoteAverageQuizScore;
+  bool _remoteLoaded = false;
 
   int _dailyGoalMinutes = 120;
 
@@ -239,6 +245,7 @@ class StatsService {
   int get semesterTotalMinutes => semesterTotalHours * 60;
 
   int get averageQuizScore {
+    if (_remoteLoaded) return _remoteAverageQuizScore ?? 0;
     final results = QuizService.recentResults;
     if (results.isEmpty) return 0;
     final average = results.fold<double>(
@@ -250,6 +257,9 @@ class StatsService {
   }
 
   List<StudyActivity> activitiesForDate(DateTime date) {
+    if (_remoteLoaded) {
+      return _remoteActivitiesByDate[_dateKey(date)] ?? const [];
+    }
     return CalendarService.instance.events
         .where(
           (event) =>
@@ -269,13 +279,74 @@ class StatsService {
         .toList(growable: false);
   }
 
-  int _studyMinutesForDate(DateTime date) => CalendarService.instance.events
-      .where(
-        (event) =>
-            _sameDate(event.date, date) &&
-            event.type != CalendarEventType.deadline,
-      )
-      .fold(0, (total, event) => total + event.duration.inMinutes);
+  int _studyMinutesForDate(DateTime date) {
+    if (_remoteLoaded) return _remoteMinutesByDate[_dateKey(date)] ?? 0;
+    return CalendarService.instance.events
+        .where(
+          (event) =>
+              _sameDate(event.date, date) &&
+              event.type != CalendarEventType.deadline,
+        )
+        .fold(0, (total, event) => total + event.duration.inMinutes);
+  }
+
+  Future<void> hydrateFromSupabase(SupabaseClient client) async {
+    final deadlineRows = await client
+        .from('deadlines')
+        .select('title, subject_name, event_type, starts_at, ends_at, location')
+        .order('starts_at');
+    final attemptRows = await client
+        .from('quiz_attempts')
+        .select('score')
+        .not('score', 'is', null);
+
+    _remoteMinutesByDate.clear();
+    _remoteActivitiesByDate.clear();
+    for (final raw in deadlineRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      if (row['event_type'] == 'deadline') continue;
+      final startsAt = DateTime.tryParse(row['starts_at'] as String? ?? '');
+      final endsAt = DateTime.tryParse(row['ends_at'] as String? ?? '');
+      if (startsAt == null || endsAt == null) continue;
+      final date = _dateKey(startsAt);
+      final duration = endsAt.difference(startsAt).inMinutes.clamp(0, 24 * 60);
+      _remoteMinutesByDate.update(
+        date,
+        (minutes) => minutes + duration,
+        ifAbsent: () => duration,
+      );
+      _remoteActivitiesByDate.putIfAbsent(date, () => []).add(
+        StudyActivity(
+          time: _formatTime(startsAt.hour, startsAt.minute),
+          title: row['title'] as String? ?? 'Lịch học',
+          description: [
+            row['subject_name'] as String? ?? '',
+            row['location'] as String? ?? '',
+          ].where((value) => value.isNotEmpty).join(' · '),
+          durationMinutes: duration,
+        ),
+      );
+    }
+    final scores = (attemptRows as List)
+        .map((row) => (row as Map<String, dynamic>)['score'])
+        .whereType<num>()
+        .map((score) => score.toDouble())
+        .toList();
+    _remoteAverageQuizScore = scores.isEmpty
+        ? null
+        : (scores.reduce((first, second) => first + second) / scores.length)
+              .round();
+    _remoteLoaded = true;
+  }
+
+  void clearRemoteData() {
+    _remoteLoaded = false;
+    _remoteAverageQuizScore = null;
+    _remoteMinutesByDate.clear();
+    _remoteActivitiesByDate.clear();
+  }
+
+  DateTime _dateKey(DateTime value) => DateTime(value.year, value.month, value.day);
 
   String _formatTime(int hour, int minute) =>
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
