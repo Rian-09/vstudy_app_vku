@@ -6,6 +6,8 @@ import '../../data/datasources/calendar_service.dart';
 import '../../data/datasources/schedule_datasource.dart';
 import '../../data/datasources/reminder_service.dart';
 import '../../data/models/calendar_event.dart';
+import '../../data/datasources/offline_schedule_datasource.dart';
+import '../../data/local/schedule_database.dart';
 import '../../data/repositories/schedule_repository_impl.dart';
 import '../../domain/entities/schedule_event.dart';
 import '../../domain/repositories/schedule_repository.dart';
@@ -18,7 +20,10 @@ final scheduleRepositoryProvider = Provider<ScheduleRepository>(
     const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
     final dataSource = url.isEmpty || anonKey.isEmpty
         ? LocalScheduleDataSource(CalendarService.instance)
-        : SupabaseScheduleDataSource(Supabase.instance.client);
+        : OfflineScheduleDataSource(
+            database: ScheduleDatabase.instance,
+            client: Supabase.instance.client,
+          );
     return ScheduleRepositoryImpl(dataSource);
   },
 );

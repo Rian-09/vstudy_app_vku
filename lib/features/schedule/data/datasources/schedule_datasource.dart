@@ -91,6 +91,10 @@ class SupabaseScheduleDataSource implements ScheduleDataSource {
     await _client.from('deadlines').insert(_toRow(event));
   }
 
+  Future<void> upsertEvent(ScheduleEvent event) async {
+    await _client.from('deadlines').upsert(_toRow(event), onConflict: 'id');
+  }
+
   @override
   Future<void> updateEvent(ScheduleEvent event) async {
     await _client
