@@ -48,7 +48,14 @@ class DocumentSyncQueue {
     final userId = client.auth.currentUser?.id;
     if (userId == null) return;
 
-    final operations = await database.getPendingSyncOperations();
+    final now = DateTime.now().toUtc();
+    final operations = (await database.getPendingSyncOperations())
+        .where(
+          (operation) =>
+              operation.nextRetryAt == null ||
+              !operation.nextRetryAt!.isAfter(now),
+        )
+        .toList(growable: false);
     for (final operation in operations) {
       try {
         final payload =
@@ -60,7 +67,10 @@ class DocumentSyncQueue {
             .upsert(payload, onConflict: 'owner_id,document_id');
         await database.removeSyncOperation(operation.id);
       } catch (_) {
-        await database.markSyncOperationFailed(operation.id);
+        await database.markSyncOperationFailed(
+          operation.id,
+          attempts: operation.attempts,
+        );
       }
     }
   }

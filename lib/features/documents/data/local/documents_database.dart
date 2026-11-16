@@ -34,6 +34,7 @@ class DocumentSyncOperations extends Table {
   TextColumn get operation => text()();
   TextColumn get payload => text()();
   DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get nextRetryAt => dateTime().nullable()();
   IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get status => text().withDefault(const Constant('pending'))();
 }
@@ -46,7 +47,7 @@ class DocumentsDatabase extends _$DocumentsDatabase {
     : super(executor ?? driftDatabase(name: 'vstudy_documents'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +69,12 @@ class DocumentsDatabase extends _$DocumentsDatabase {
       }
       if (from < 3) {
         await m.createTable(documentSyncOperations);
+      }
+      if (from < 4) {
+        await m.addColumn(
+          documentSyncOperations,
+          documentSyncOperations.nextRetryAt,
+        );
       }
     },
   );
@@ -154,13 +161,17 @@ class DocumentsDatabase extends _$DocumentsDatabase {
     )..where((row) => row.id.equals(id))).go();
   }
 
-  Future<void> markSyncOperationFailed(int id) async {
+  Future<void> markSyncOperationFailed(int id, {required int attempts}) async {
+    final delaySeconds = (1 << attempts.clamp(0, 5)).clamp(1, 30);
     await (update(
       documentSyncOperations,
     )..where((row) => row.id.equals(id))).write(
-      const DocumentSyncOperationsCompanion(
+      DocumentSyncOperationsCompanion(
         status: Value('pending'),
-        attempts: Value.absent(),
+        attempts: Value(attempts + 1),
+        nextRetryAt: Value(
+          DateTime.now().toUtc().add(Duration(seconds: delaySeconds)),
+        ),
       ),
     );
   }

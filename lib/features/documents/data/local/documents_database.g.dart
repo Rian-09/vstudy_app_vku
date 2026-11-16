@@ -971,6 +971,17 @@ class $DocumentSyncOperationsTable extends DocumentSyncOperations
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _nextRetryAtMeta = const VerificationMeta(
+    'nextRetryAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> nextRetryAt = GeneratedColumn<DateTime>(
+    'next_retry_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _attemptsMeta = const VerificationMeta(
     'attempts',
   );
@@ -1001,6 +1012,7 @@ class $DocumentSyncOperationsTable extends DocumentSyncOperations
     operation,
     payload,
     updatedAt,
+    nextRetryAt,
     attempts,
     status,
   ];
@@ -1059,6 +1071,15 @@ class $DocumentSyncOperationsTable extends DocumentSyncOperations
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('next_retry_at')) {
+      context.handle(
+        _nextRetryAtMeta,
+        nextRetryAt.isAcceptableOrUnknown(
+          data['next_retry_at']!,
+          _nextRetryAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('attempts')) {
       context.handle(
         _attemptsMeta,
@@ -1104,6 +1125,10 @@ class $DocumentSyncOperationsTable extends DocumentSyncOperations
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      nextRetryAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_retry_at'],
+      ),
       attempts: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}attempts'],
@@ -1129,6 +1154,7 @@ class DocumentSyncOperation extends DataClass
   final String operation;
   final String payload;
   final DateTime updatedAt;
+  final DateTime? nextRetryAt;
   final int attempts;
   final String status;
   const DocumentSyncOperation({
@@ -1138,6 +1164,7 @@ class DocumentSyncOperation extends DataClass
     required this.operation,
     required this.payload,
     required this.updatedAt,
+    this.nextRetryAt,
     required this.attempts,
     required this.status,
   });
@@ -1150,6 +1177,9 @@ class DocumentSyncOperation extends DataClass
     map['operation'] = Variable<String>(operation);
     map['payload'] = Variable<String>(payload);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || nextRetryAt != null) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt);
+    }
     map['attempts'] = Variable<int>(attempts);
     map['status'] = Variable<String>(status);
     return map;
@@ -1163,6 +1193,9 @@ class DocumentSyncOperation extends DataClass
       operation: Value(operation),
       payload: Value(payload),
       updatedAt: Value(updatedAt),
+      nextRetryAt: nextRetryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextRetryAt),
       attempts: Value(attempts),
       status: Value(status),
     );
@@ -1180,6 +1213,7 @@ class DocumentSyncOperation extends DataClass
       operation: serializer.fromJson<String>(json['operation']),
       payload: serializer.fromJson<String>(json['payload']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      nextRetryAt: serializer.fromJson<DateTime?>(json['nextRetryAt']),
       attempts: serializer.fromJson<int>(json['attempts']),
       status: serializer.fromJson<String>(json['status']),
     );
@@ -1194,6 +1228,7 @@ class DocumentSyncOperation extends DataClass
       'operation': serializer.toJson<String>(operation),
       'payload': serializer.toJson<String>(payload),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'nextRetryAt': serializer.toJson<DateTime?>(nextRetryAt),
       'attempts': serializer.toJson<int>(attempts),
       'status': serializer.toJson<String>(status),
     };
@@ -1206,6 +1241,7 @@ class DocumentSyncOperation extends DataClass
     String? operation,
     String? payload,
     DateTime? updatedAt,
+    Value<DateTime?> nextRetryAt = const Value.absent(),
     int? attempts,
     String? status,
   }) => DocumentSyncOperation(
@@ -1215,6 +1251,7 @@ class DocumentSyncOperation extends DataClass
     operation: operation ?? this.operation,
     payload: payload ?? this.payload,
     updatedAt: updatedAt ?? this.updatedAt,
+    nextRetryAt: nextRetryAt.present ? nextRetryAt.value : this.nextRetryAt,
     attempts: attempts ?? this.attempts,
     status: status ?? this.status,
   );
@@ -1230,6 +1267,9 @@ class DocumentSyncOperation extends DataClass
       operation: data.operation.present ? data.operation.value : this.operation,
       payload: data.payload.present ? data.payload.value : this.payload,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      nextRetryAt: data.nextRetryAt.present
+          ? data.nextRetryAt.value
+          : this.nextRetryAt,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
       status: data.status.present ? data.status.value : this.status,
     );
@@ -1244,6 +1284,7 @@ class DocumentSyncOperation extends DataClass
           ..write('operation: $operation, ')
           ..write('payload: $payload, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
           ..write('attempts: $attempts, ')
           ..write('status: $status')
           ..write(')'))
@@ -1258,6 +1299,7 @@ class DocumentSyncOperation extends DataClass
     operation,
     payload,
     updatedAt,
+    nextRetryAt,
     attempts,
     status,
   );
@@ -1271,6 +1313,7 @@ class DocumentSyncOperation extends DataClass
           other.operation == this.operation &&
           other.payload == this.payload &&
           other.updatedAt == this.updatedAt &&
+          other.nextRetryAt == this.nextRetryAt &&
           other.attempts == this.attempts &&
           other.status == this.status);
 }
@@ -1283,6 +1326,7 @@ class DocumentSyncOperationsCompanion
   final Value<String> operation;
   final Value<String> payload;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> nextRetryAt;
   final Value<int> attempts;
   final Value<String> status;
   const DocumentSyncOperationsCompanion({
@@ -1292,6 +1336,7 @@ class DocumentSyncOperationsCompanion
     this.operation = const Value.absent(),
     this.payload = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
     this.attempts = const Value.absent(),
     this.status = const Value.absent(),
   });
@@ -1302,6 +1347,7 @@ class DocumentSyncOperationsCompanion
     required String operation,
     required String payload,
     required DateTime updatedAt,
+    this.nextRetryAt = const Value.absent(),
     this.attempts = const Value.absent(),
     this.status = const Value.absent(),
   }) : entityType = Value(entityType),
@@ -1316,6 +1362,7 @@ class DocumentSyncOperationsCompanion
     Expression<String>? operation,
     Expression<String>? payload,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? nextRetryAt,
     Expression<int>? attempts,
     Expression<String>? status,
   }) {
@@ -1326,6 +1373,7 @@ class DocumentSyncOperationsCompanion
       if (operation != null) 'operation': operation,
       if (payload != null) 'payload': payload,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (nextRetryAt != null) 'next_retry_at': nextRetryAt,
       if (attempts != null) 'attempts': attempts,
       if (status != null) 'status': status,
     });
@@ -1338,6 +1386,7 @@ class DocumentSyncOperationsCompanion
     Value<String>? operation,
     Value<String>? payload,
     Value<DateTime>? updatedAt,
+    Value<DateTime?>? nextRetryAt,
     Value<int>? attempts,
     Value<String>? status,
   }) {
@@ -1348,6 +1397,7 @@ class DocumentSyncOperationsCompanion
       operation: operation ?? this.operation,
       payload: payload ?? this.payload,
       updatedAt: updatedAt ?? this.updatedAt,
+      nextRetryAt: nextRetryAt ?? this.nextRetryAt,
       attempts: attempts ?? this.attempts,
       status: status ?? this.status,
     );
@@ -1374,6 +1424,9 @@ class DocumentSyncOperationsCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (nextRetryAt.present) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt.value);
+    }
     if (attempts.present) {
       map['attempts'] = Variable<int>(attempts.value);
     }
@@ -1392,6 +1445,7 @@ class DocumentSyncOperationsCompanion
           ..write('operation: $operation, ')
           ..write('payload: $payload, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('nextRetryAt: $nextRetryAt, ')
           ..write('attempts: $attempts, ')
           ..write('status: $status')
           ..write(')'))
@@ -1855,6 +1909,7 @@ typedef $$DocumentSyncOperationsTableCreateCompanionBuilder =
       required String operation,
       required String payload,
       required DateTime updatedAt,
+      Value<DateTime?> nextRetryAt,
       Value<int> attempts,
       Value<String> status,
     });
@@ -1866,6 +1921,7 @@ typedef $$DocumentSyncOperationsTableUpdateCompanionBuilder =
       Value<String> operation,
       Value<String> payload,
       Value<DateTime> updatedAt,
+      Value<DateTime?> nextRetryAt,
       Value<int> attempts,
       Value<String> status,
     });
@@ -1906,6 +1962,11 @@ class $$DocumentSyncOperationsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextRetryAt => $composableBuilder(
+    column: $table.nextRetryAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1959,6 +2020,11 @@ class $$DocumentSyncOperationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get nextRetryAt => $composableBuilder(
+    column: $table.nextRetryAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get attempts => $composableBuilder(
     column: $table.attempts,
     builder: (column) => ColumnOrderings(column),
@@ -1998,6 +2064,11 @@ class $$DocumentSyncOperationsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextRetryAt => $composableBuilder(
+    column: $table.nextRetryAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get attempts =>
       $composableBuilder(column: $table.attempts, builder: (column) => column);
@@ -2058,6 +2129,7 @@ class $$DocumentSyncOperationsTableTableManager
                 Value<String> operation = const Value.absent(),
                 Value<String> payload = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> nextRetryAt = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
                 Value<String> status = const Value.absent(),
               }) => DocumentSyncOperationsCompanion(
@@ -2067,6 +2139,7 @@ class $$DocumentSyncOperationsTableTableManager
                 operation: operation,
                 payload: payload,
                 updatedAt: updatedAt,
+                nextRetryAt: nextRetryAt,
                 attempts: attempts,
                 status: status,
               ),
@@ -2078,6 +2151,7 @@ class $$DocumentSyncOperationsTableTableManager
                 required String operation,
                 required String payload,
                 required DateTime updatedAt,
+                Value<DateTime?> nextRetryAt = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
                 Value<String> status = const Value.absent(),
               }) => DocumentSyncOperationsCompanion.insert(
@@ -2087,6 +2161,7 @@ class $$DocumentSyncOperationsTableTableManager
                 operation: operation,
                 payload: payload,
                 updatedAt: updatedAt,
+                nextRetryAt: nextRetryAt,
                 attempts: attempts,
                 status: status,
               ),
