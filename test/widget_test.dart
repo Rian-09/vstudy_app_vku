@@ -27,6 +27,11 @@ import 'package:flutter_application_1/features/schedule/data/datasources/calenda
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:flutter_application_1/core/error/failure.dart';
+import 'package:flutter_application_1/features/auth/domain/entities/user_profile.dart';
+import 'package:flutter_application_1/features/auth/domain/repositories/auth_repository.dart';
+import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
@@ -80,7 +85,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 2800));
     await tester.pumpAndSettle();
 
-    expect(find.text('Đăng nhập'), findsOneWidget);
+    expect(find.text('Đăng nhập'), findsWidgets);
     expect(find.text('Quên mật khẩu?'), findsOneWidget);
   });
 
@@ -165,13 +170,14 @@ void main() {
     );
 
     await tester.pumpWidget(
-      ProviderScope(
+      _authTestScope(
         child: MaterialApp(
           home: const ProfileScreen(),
           routes: {'/edit-profile': (context) => const EditProfileScreen()},
         ),
       ),
     );
+    await tester.pumpAndSettle();
     expect(find.text('Tom'), findsOneWidget);
 
     final avatar = find.byWidgetPredicate(
@@ -203,7 +209,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      ProviderScope(
+      _authTestScope(
         child: MaterialApp(
           home: const ProfileScreen(),
           routes: {
@@ -213,6 +219,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Đăng xuất'));
     await tester.tap(find.text('Đăng xuất'));
     await tester.pumpAndSettle();
@@ -583,4 +590,73 @@ void main() {
     expect(service.eventById(created.id), isNull);
     expect(find.byType(CalendarScreen), findsOneWidget);
   });
+}
+
+Widget _authTestScope({required Widget child}) => ProviderScope(
+  overrides: [
+    authRepositoryProvider.overrideWithValue(_TestAuthRepository()),
+  ],
+  child: child,
+);
+
+class _TestAuthRepository implements AuthRepository {
+  UserProfile? get _current {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return null;
+    return UserProfile(
+      id: 'test-user',
+      fullName: user.name,
+      email: user.email,
+      className: user.className,
+      major: user.major,
+      birthday: user.birthday,
+      cohort: '2023',
+      subjects: user.subjects,
+      avatarUrl: user.avatarAsset,
+      role: 'STUDENT',
+      isLocked: false,
+    );
+  }
+
+  @override
+  Future<Result<UserProfile?>> currentUser() async => Right(_current);
+
+  @override
+  Future<Result<UserProfile>> updateProfile(UserProfile profile) async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return const Left(AuthFailure('Chưa đăng nhập.'));
+    AuthService.instance.updateCurrentUser(
+      user.copyWith(
+        name: profile.fullName,
+        className: profile.className,
+        major: profile.major,
+        birthday: profile.birthday ?? user.birthday,
+        subjects: profile.subjects,
+        avatarAsset: profile.avatarUrl ?? user.avatarAsset,
+      ),
+    );
+    return Right(profile);
+  }
+
+  @override
+  Future<Result<void>> logout() async {
+    AuthService.instance.clearSession();
+    return const Right(null);
+  }
+
+  @override
+  Future<Result<UserProfile>> login({required String email, required String password}) async =>
+      const Left(AuthFailure('Không dùng trong test này.'));
+
+  @override
+  Future<Result<void>> register({required String fullName, required String email, required String password}) async =>
+      const Left(AuthFailure('Không dùng trong test này.'));
+
+  @override
+  Future<Result<void>> sendPasswordReset(String email) async =>
+      const Left(AuthFailure('Không dùng trong test này.'));
+
+  @override
+  Future<Result<void>> changePassword(String password) async =>
+      const Left(AuthFailure('Không dùng trong test này.'));
 }
