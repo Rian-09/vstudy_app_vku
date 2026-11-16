@@ -2,6 +2,18 @@ import '../../data/datasources/ai_service.dart' as data;
 import '../../data/models/ai_models.dart';
 import '../../data/repositories/ai_planner_repository_impl.dart';
 import '../repositories/ai_planner_repository.dart';
+import '../entities/ai_answer.dart';
+import '../../../../core/error/failure.dart';
+
+class AskAiUseCase {
+  const AskAiUseCase(this._repository);
+
+  final AiPlannerRepository _repository;
+
+  Future<Result<AiAnswer>> call(String question, {String? context}) {
+    return _repository.ask(question, context: context);
+  }
+}
 
 class AiPlannerUseCases {
   AiPlannerUseCases(this._repository);

@@ -11,4 +11,8 @@ class AuthFailure extends Failure {
   const AuthFailure(super.message, {super.code});
 }
 
+class AiFailure extends Failure {
+  const AiFailure(super.message, {super.code});
+}
+
 typedef Result<T> = Either<Failure, T>;

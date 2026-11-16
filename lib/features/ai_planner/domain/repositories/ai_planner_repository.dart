@@ -1,6 +1,9 @@
 import '../../data/models/ai_models.dart';
+import '../../../../core/error/failure.dart';
+import '../entities/ai_answer.dart';
 
 abstract interface class AiPlannerRepository {
+  Future<Result<AiAnswer>> ask(String question, {String? context});
   List<AiChatMessage> get chat;
   List<AiRoadmapTask> get roadmapTasks;
   AiSummaryData summaryFor(String documentTitle);
