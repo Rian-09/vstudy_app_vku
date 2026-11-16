@@ -109,7 +109,20 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
   }
 
   int minutesForDate(DateTime date) => recordsForDate(date)
-      .fold(0, (total, record) => total + record.durationMinutes);
+      .fold(0, (total, record) => total + record.durationMinutes) +
+      activeMinutesForDate(date);
+
+  int activeMinutesForDate(DateTime date) {
+    final startedAt = _startedAt;
+    if (startedAt == null) return 0;
+    final now = DateTime.now();
+    final dayStart = DateTime(date.year, date.month, date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final overlapStart = startedAt.isAfter(dayStart) ? startedAt : dayStart;
+    final overlapEnd = now.isBefore(dayEnd) ? now : dayEnd;
+    if (!overlapEnd.isAfter(overlapStart)) return 0;
+    return overlapEnd.difference(overlapStart).inMinutes;
+  }
 
   String _storageKey(String userId) => 'vstudy.study_sessions.$userId';
 }
