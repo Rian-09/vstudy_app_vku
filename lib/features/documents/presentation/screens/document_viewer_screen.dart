@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pdfx/pdfx.dart';
 
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
@@ -8,11 +11,6 @@ import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
 import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
 
-const _viewerPages = [
-  'assets/images/documents/viewer_page_1.png',
-  'assets/images/documents/viewer_page_2.png',
-  'assets/images/documents/viewer_page_3.png',
-];
 const _viewerWarmText = Color(0xFF554336);
 
 class DocumentViewerScreen extends ConsumerStatefulWidget {
@@ -26,9 +24,29 @@ class DocumentViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
-  final _pageController = PageController();
   int _currentPage = 0;
   bool _showAiHint = true;
+  PdfControllerPinch? _pdfController;
+  late final Future<Uint8List?> _pdfFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pdfFuture = _loadPdf();
+  }
+
+  Future<Uint8List?> _loadPdf() {
+    final document = ref
+        .read(documentUseCasesProvider)
+        .findById(widget.documentId);
+    if (document == null) return Future.value(null);
+    return ref
+        .read(documentStorageDataSourceProvider)
+        .getOnlineOrCached(
+          documentId: document.id,
+          filePath: document.filePath,
+        );
+  }
 
   StudyDocument get _document =>
       ref.read(documentUseCasesProvider).findById(widget.documentId) ??
@@ -36,8 +54,36 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pdfController?.dispose();
     super.dispose();
+  }
+
+  Widget _buildPdfPreview() {
+    return FutureBuilder<Uint8List?>(
+      future: _pdfFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final bytes = snapshot.data;
+        if (bytes == null || bytes.isEmpty) {
+          return const Center(
+            child: Text(
+              'Tài liệu chưa có file PDF hoặc chưa được tải xuống.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _viewerWarmText),
+            ),
+          );
+        }
+        _pdfController ??= PdfControllerPinch(
+          document: PdfDocument.openData(bytes),
+        );
+        return PdfViewPinch(
+          controller: _pdfController!,
+          onPageChanged: (page) => setState(() => _currentPage = page - 1),
+        );
+      },
+    );
   }
 
   Future<void> _startDownload() async {
@@ -130,19 +176,10 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                           Center(
                             child: SizedBox(
                               width: constraints.maxWidth - 34,
-                              height: (constraints.maxWidth - 34) * .562,
+                              height: 460,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
-                                child: PageView.builder(
-                                  controller: _pageController,
-                                  itemCount: _viewerPages.length,
-                                  onPageChanged: (page) =>
-                                      setState(() => _currentPage = page),
-                                  itemBuilder: (context, index) => Image.asset(
-                                    _viewerPages[index],
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
+                                child: _buildPdfPreview(),
                               ),
                             ),
                           ),
