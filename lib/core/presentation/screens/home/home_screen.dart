@@ -5,6 +5,7 @@ import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/features/progress/data/datasources/stats_service.dart';
+import 'package:flutter_application_1/features/progress/data/datasources/study_session_service.dart';
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
@@ -55,6 +56,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           animation: Listenable.merge([
             QuizService.instance,
             DocumentRepository.instance,
+            StudySessionService.instance,
           ]),
           builder: (context, _) {
             final stats = StatsService.instance;
@@ -77,8 +79,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     completedMinutes: stats.dayForDate(DateTime.now()).minutes,
                     goalMinutes: stats.dailyGoalMinutes,
                     quizAverage: stats.averageQuizScore,
-                    onQuizTap: () =>
-                        _showMessage(context, 'Quiz sẽ sớm khả dụng.'),
+                    hasGoal: stats.hasDailyGoal,
+                    onQuizTap: () => stats.hasDailyGoal
+                        ? _showMessage(context, 'Quiz sẽ sớm khả dụng.')
+                        : Navigator.of(context).pushNamed('/goals-streak'),
                   ),
                   const SizedBox(height: 50),
                   QuickAccessList(

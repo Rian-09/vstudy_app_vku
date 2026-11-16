@@ -25,8 +25,11 @@ class _GoalsStreakScreenState extends State<GoalsStreakScreen> {
           _DailyGoalSheet(initialMinutes: _stats.dailyGoalMinutes),
     );
     if (goalMinutes == null || !mounted) return;
+    // The in-memory goal is updated synchronously; persistence continues in
+    // the background so the success popup remains immediate.
     _stats.setDailyGoalMinutes(goalMinutes);
     setState(() {});
+    if (!mounted) return;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -39,8 +42,9 @@ class _GoalsStreakScreenState extends State<GoalsStreakScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final goalProgress =
-        (StatsService.todayStudyMinutes / _stats.dailyGoalMinutes).clamp(
+    final goalProgress = !_stats.hasDailyGoal
+        ? 0.0
+        : (StatsService.todayStudyMinutes / _stats.dailyGoalMinutes).clamp(
           0.0,
           1.0,
         );
@@ -71,7 +75,9 @@ class _GoalsStreakScreenState extends State<GoalsStreakScreen> {
                           ),
                         ),
                         Text(
-                          '${StatsService.todayStudyMinutes ~/ 60}h ${StatsService.todayStudyMinutes % 60}p',
+                          _stats.hasDailyGoal
+                              ? '${StatsService.todayStudyMinutes ~/ 60}h ${StatsService.todayStudyMinutes % 60}p'
+                              : 'Chưa đặt',
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
@@ -86,7 +92,9 @@ class _GoalsStreakScreenState extends State<GoalsStreakScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            '${_stats.dailyGoalMinutes ~/ 60}h ${_stats.dailyGoalMinutes % 60}p',
+                            _stats.hasDailyGoal
+                                ? '${_stats.dailyGoalMinutes ~/ 60}h ${_stats.dailyGoalMinutes % 60}p'
+                                : 'Chưa đặt mục tiêu',
                             style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 28,
@@ -114,7 +122,9 @@ class _GoalsStreakScreenState extends State<GoalsStreakScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      goalProgress >= 1
+                      !_stats.hasDailyGoal
+                          ? 'Hãy đặt mục tiêu học mỗi ngày để bắt đầu theo dõi.'
+                          : goalProgress >= 1
                           ? 'Mục tiêu hôm nay đã hoàn thành.'
                           : 'Còn ${_stats.dailyGoalMinutes - StatsService.todayStudyMinutes} phút để hoàn thành mục tiêu.',
                       style: AuthTextStyles.caption,

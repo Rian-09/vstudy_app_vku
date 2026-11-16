@@ -3,6 +3,8 @@ import '../../../schedule/data/datasources/calendar_service.dart';
 import '../../../schedule/data/models/calendar_event.dart';
 import '../../../quiz/data/datasources/quiz_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'study_session_service.dart';
 
 class StatsService {
   StatsService._();
@@ -18,11 +20,62 @@ class StatsService {
   bool _remoteLoaded = false;
 
   int _dailyGoalMinutes = 120;
+  bool _hasDailyGoal = false;
 
   int get dailyGoalMinutes => _dailyGoalMinutes;
+  bool get hasDailyGoal => _hasDailyGoal;
 
-  void setDailyGoalMinutes(int value) {
+  List<StudySessionRecord> get sessionRecords =>
+      StudySessionService.instance.records;
+
+  int get todayMinutes => _studyMinutesForDate(DateTime.now());
+
+  int get currentStreak {
+    var streak = 0;
+    var date = DateTime.now();
+    while (_studyMinutesForDate(date) > 0) {
+      streak++;
+      date = date.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  int get bestStreak {
+    final dates = sessionRecords
+        .map((record) => DateTime(record.startedAt.year, record.startedAt.month, record.startedAt.day))
+        .toSet()
+        .toList()
+      ..sort();
+    var best = 0;
+    var current = 0;
+    DateTime? previous;
+    for (final date in dates) {
+      if (previous != null && date.difference(previous).inDays == 1) {
+        current++;
+      } else {
+        current = 1;
+      }
+      if (current > best) best = current;
+      previous = date;
+    }
+    return best;
+  }
+
+  Future<void> setDailyGoalMinutes(int value) async {
     _dailyGoalMinutes = value.clamp(30, 240);
+    _hasDailyGoal = true;
+    final preferences = await SharedPreferences.getInstance();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId != null) {
+      await preferences.setInt('vstudy.daily_goal.$userId', _dailyGoalMinutes);
+    }
+  }
+
+  Future<void> loadGoalForUser(String userId) async {
+    final preferences = await SharedPreferences.getInstance();
+    final value = preferences.getInt('vstudy.daily_goal.$userId');
+    _dailyGoalMinutes = value ?? 120;
+    _hasDailyGoal = value != null;
   }
 
   static DateTime get weekStart {
@@ -36,14 +89,15 @@ class StatsService {
   }
 
   static int get selectedMonthDay => DateTime.now().day;
-  static const weeklyGoalMinutes = 15 * 60;
-  static const todayStudyMinutes = 100;
-  static const goalDaysMetThisWeek = 5;
-  static const bestStreakDays = 14;
+  static int get weeklyGoalMinutes => instance.dailyGoalMinutes * 7;
+  static int get todayStudyMinutes => instance.todayMinutes;
+  static int get goalDaysMetThisWeek =>
+      instance.weekDays.where((day) => day.minutes >= instance.dailyGoalMinutes).length;
+  static int get bestStreakDays => instance.bestStreak;
   static const semesterGoalHours = 160;
   static const semesterTotalHours = 128;
-  static const streakDays = 7;
-  static const focusSessions = 18;
+  static int get streakDays => instance.currentStreak;
+  static int get focusSessions => instance.sessionRecords.length;
 
   static const semesterWeeklyHours = [
     6.1,
@@ -60,38 +114,34 @@ class StatsService {
     13.4,
   ];
 
-  static const weeklyFocusMinutes = [45, 60, 80, 30, 65, 75, 95];
-  static const focusSessionCount = 18;
-  static const focusBestDay = 'Thứ bảy';
-  static const focusBestSession = '09:00 - 10:35';
-  static const focusAverageMinutes = 25;
+  static List<int> get weeklyFocusMinutes =>
+      instance.weekDays.map((day) => day.minutes).toList(growable: false);
+  static int get focusSessionCount => instance.sessionRecords.length;
+  static String get focusBestDay {
+    final days = instance.weekDays;
+    if (days.isEmpty) return 'Chưa có dữ liệu';
+    final best = days.reduce((a, b) => a.minutes >= b.minutes ? a : b);
+    return _weekdayName(best.date.weekday);
+  }
+  static String get focusBestSession {
+    final sessions = instance.sessionRecords;
+    if (sessions.isEmpty) return 'Chưa có dữ liệu';
+    final best = sessions.reduce((a, b) => a.durationMinutes >= b.durationMinutes ? a : b);
+    return '${_formatClock(best.startedAt)} - ${_formatClock(best.endedAt)}';
+  }
+  static int get focusAverageMinutes {
+    final records = instance.sessionRecords;
+    if (records.isEmpty) return 0;
+    return records.fold(0, (sum, item) => sum + item.durationMinutes) ~/ records.length;
+  }
 
-  static const flashcardsReviewedToday = 18;
-  static const flashcardsMasteredToday = 14;
-  static const flashcardsDueToday = 6;
-  static const flashcardsReviewedThisWeek = 94;
-  static const flashcardsTotal = 134;
-  static const flashcardReviewMinutesByDay = [38, 42, 26, 50, 35, 44, 30];
-  static const flashcardTopics = [
-    FlashcardTopicStat(
-      title: 'Giải tích 1',
-      detail: 'Đã thuộc 34/40 thẻ',
-      reviewed: 34,
-      total: 40,
-    ),
-    FlashcardTopicStat(
-      title: 'Pháp luật đại cương',
-      detail: 'Đã thuộc 26/32 thẻ',
-      reviewed: 26,
-      total: 32,
-    ),
-    FlashcardTopicStat(
-      title: 'Triết học',
-      detail: 'Đã thuộc 18/25 thẻ',
-      reviewed: 18,
-      total: 25,
-    ),
-  ];
+  static const flashcardsReviewedToday = 0;
+  static const flashcardsMasteredToday = 0;
+  static const flashcardsDueToday = 0;
+  static const flashcardsReviewedThisWeek = 0;
+  static const flashcardsTotal = 0;
+  static const flashcardReviewMinutesByDay = <int>[];
+  static const flashcardTopics = <FlashcardTopicStat>[];
 
   static const quizErrorCategories = [
     ReviewErrorStat(
@@ -260,23 +310,23 @@ class StatsService {
   );
 
   List<StudyDayStat> get weeklyFocusDays => List.generate(
-    weeklyFocusMinutes.length,
+    7,
     (index) => StudyDayStat(
       date: weekStart.add(Duration(days: index)),
-      minutes: weeklyFocusMinutes[index],
+      minutes: _studyMinutesForDate(weekStart.add(Duration(days: index))),
     ),
   );
 
   List<StudyDayStat> get flashcardReviewDays => List.generate(
-    flashcardReviewMinutesByDay.length,
+    7,
     (index) => StudyDayStat(
       date: weekStart.add(Duration(days: index)),
-      minutes: flashcardReviewMinutesByDay[index],
+      minutes: 0,
     ),
   );
 
   int get weeklyFocusTotalMinutes =>
-      weeklyFocusMinutes.fold(0, (total, minutes) => total + minutes);
+      weekDays.fold(0, (total, day) => total + day.minutes);
 
   List<StudyDayStat> get monthDays => List.generate(
     DateTime(month.year, month.month + 1, 0).day,
@@ -337,14 +387,9 @@ class StatsService {
   }
 
   int _studyMinutesForDate(DateTime date) {
-    if (_remoteLoaded) return _remoteMinutesByDate[_dateKey(date)] ?? 0;
-    return CalendarService.instance.events
-        .where(
-          (event) =>
-              _sameDate(event.date, date) &&
-              event.type != CalendarEventType.deadline,
-        )
-        .fold(0, (total, event) => total + event.duration.inMinutes);
+    final localMinutes = StudySessionService.instance.minutesForDate(date);
+    final remoteMinutes = _remoteMinutesByDate[_dateKey(date)] ?? 0;
+    return localMinutes + remoteMinutes;
   }
 
   Future<void> hydrateFromSupabase(SupabaseClient client) async {
@@ -357,7 +402,7 @@ class StatsService {
         .order('starts_at');
     final attemptRows = await client
         .from('quiz_attempts')
-        .select('score')
+        .select('score, completed_at, duration_seconds')
         .not('score', 'is', null);
     final documentProgressRows = await client
         .from('document_progress')
@@ -392,11 +437,6 @@ class StatsService {
       if (startsAt == null || endsAt == null) continue;
       final date = _dateKey(startsAt);
       final duration = endsAt.difference(startsAt).inMinutes.clamp(0, 24 * 60);
-      _remoteMinutesByDate.update(
-        date,
-        (minutes) => minutes + duration,
-        ifAbsent: () => duration,
-      );
       _remoteActivitiesByDate.putIfAbsent(date, () => []).add(
         StudyActivity(
           time: _formatTime(startsAt.hour, startsAt.minute),
@@ -414,6 +454,18 @@ class StatsService {
         .whereType<num>()
         .map((score) => score.toDouble())
         .toList();
+    for (final raw in attemptRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      final completedAt = DateTime.tryParse(row['completed_at'] as String? ?? '');
+      final duration = (row['duration_seconds'] as num?)?.toInt() ?? 0;
+      if (completedAt != null && duration > 0) {
+        _remoteMinutesByDate.update(
+          _dateKey(completedAt.toLocal()),
+          (minutes) => minutes + duration ~/ 60,
+          ifAbsent: () => duration ~/ 60,
+        );
+      }
+    }
     _remoteAverageQuizScore = scores.isEmpty
         ? null
         : scores
@@ -448,6 +500,20 @@ class StatsService {
     _remoteDeadlineCountsBySubject.clear();
     _remoteOverdueDeadlineCount = 0;
   }
+
+  static String _weekdayName(int weekday) => const [
+        '',
+        'Thứ hai',
+        'Thứ ba',
+        'Thứ tư',
+        'Thứ năm',
+        'Thứ sáu',
+        'Thứ bảy',
+        'Chủ nhật',
+      ][weekday];
+
+  static String _formatClock(DateTime value) =>
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 
   DateTime _dateKey(DateTime value) => DateTime(value.year, value.month, value.day);
 

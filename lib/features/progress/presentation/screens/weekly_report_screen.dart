@@ -92,7 +92,7 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
               ),
               const SizedBox(height: 12),
               Row(
-                children: const [
+                children: [
                   Expanded(
                     child: _ReportMetric(
                       title: 'Phiên tập trung',

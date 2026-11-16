@@ -36,6 +36,19 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
   String _formatDate(DateTime date) =>
       '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
 
+  String _formatHours(int minutes) {
+    final hours = minutes ~/ 60;
+    final remaining = minutes % 60;
+    return remaining == 0 ? '${hours}h' : '${hours}h ${remaining}p';
+  }
+
+  String get _mostStudiedDay {
+    final days = _stats.monthDays.where((day) => day.minutes > 0).toList();
+    if (days.isEmpty) return 'Chưa có dữ liệu';
+    final best = days.reduce((a, b) => a.minutes >= b.minutes ? a : b);
+    return '${_formatDate(best.date)} · ${_formatHours(best.minutes)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthBackground(
@@ -122,7 +135,8 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
               child: _MetricCard(
                 label: 'Chuỗi ngày học',
                 value: '${StatsService.streakDays} ngày',
-                detail: 'Flashcard: đạt 7/7 ngày',
+                detail:
+                    'Mục tiêu: đạt ${StatsService.goalDaysMetThisWeek}/7 ngày',
               ),
             ),
             const SizedBox(width: 10),
@@ -142,8 +156,11 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             children: [
               Row(
                 children: [
-                  const Expanded(
-                    child: Text('Mục tiêu 15 giờ', style: AuthTextStyles.label),
+                  Expanded(
+                    child: Text(
+                      'Mục tiêu ${_formatHours(StatsService.weeklyGoalMinutes)}',
+                      style: AuthTextStyles.label,
+                    ),
                   ),
                   Text(
                     '${(goalProgress * 100).round()}%',
@@ -162,8 +179,8 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Còn 40p · Tập trung tổng 7h 30p\nMục tiêu flashcard: 20 thẻ mỗi ngày',
+              Text(
+                'Còn ${(StatsService.weeklyGoalMinutes - _stats.weekTotalMinutes).clamp(0, 1 << 30)}p · Tập trung tổng ${_formatHours(_stats.weekTotalMinutes)}',
                 style: AuthTextStyles.caption,
               ),
             ],
@@ -211,7 +228,7 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
         ),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(
               child: _MetricCard(
                 label: 'Chuỗi ngày học',
@@ -222,7 +239,7 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             Expanded(
               child: _MetricCard(
                 label: 'Ngày học nhiều nhất',
-                value: '10/10 · 4h 05p',
+                value: _mostStudiedDay,
               ),
             ),
           ],

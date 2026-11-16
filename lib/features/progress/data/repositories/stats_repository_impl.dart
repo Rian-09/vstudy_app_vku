@@ -11,7 +11,10 @@ class StatsRepositoryImpl implements StatsRepository {
   int get dailyGoalMinutes => _dataSource.dailyGoalMinutes;
 
   @override
-  void setDailyGoalMinutes(int value) => _dataSource.setDailyGoalMinutes(value);
+  Future<void> setDailyGoalMinutes(int value) => _dataSource.setDailyGoalMinutes(value);
+
+  @override
+  bool get hasDailyGoal => _dataSource.hasDailyGoal;
 
   @override
   List<StudyDayStat> get weekDays => _dataSource.weekDays;

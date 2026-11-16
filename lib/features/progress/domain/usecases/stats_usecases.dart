@@ -13,7 +13,8 @@ class StatsUseCases {
   final StatsRepository _repository;
 
   int get dailyGoalMinutes => _repository.dailyGoalMinutes;
-  void setDailyGoalMinutes(int value) => _repository.setDailyGoalMinutes(value);
+  Future<void> setDailyGoalMinutes(int value) => _repository.setDailyGoalMinutes(value);
+  bool get hasDailyGoal => _repository.hasDailyGoal;
   List<StudyDayStat> get weekDays => _repository.weekDays;
   List<StudyDayStat> get weeklyFocusDays => _repository.weeklyFocusDays;
   List<StudyDayStat> get flashcardReviewDays => _repository.flashcardReviewDays;
@@ -30,19 +31,19 @@ class StatsUseCases {
   static DateTime get weekStart => data.StatsService.weekStart;
   static DateTime get month => data.StatsService.month;
   static int get selectedMonthDay => data.StatsService.selectedMonthDay;
-  static const weeklyGoalMinutes = data.StatsService.weeklyGoalMinutes;
-  static const todayStudyMinutes = data.StatsService.todayStudyMinutes;
-  static const goalDaysMetThisWeek = data.StatsService.goalDaysMetThisWeek;
-  static const bestStreakDays = data.StatsService.bestStreakDays;
+  static int get weeklyGoalMinutes => data.StatsService.weeklyGoalMinutes;
+  static int get todayStudyMinutes => data.StatsService.todayStudyMinutes;
+  static int get goalDaysMetThisWeek => data.StatsService.goalDaysMetThisWeek;
+  static int get bestStreakDays => data.StatsService.bestStreakDays;
   static const semesterGoalHours = data.StatsService.semesterGoalHours;
   static const semesterTotalHours = data.StatsService.semesterTotalHours;
-  static const streakDays = data.StatsService.streakDays;
+  static int get streakDays => data.StatsService.streakDays;
   static int get averageQuizScore => data.StatsService.instance.averageQuizScore;
   static const semesterWeeklyHours = data.StatsService.semesterWeeklyHours;
-  static const focusSessionCount = data.StatsService.focusSessionCount;
-  static const focusBestDay = data.StatsService.focusBestDay;
-  static const focusBestSession = data.StatsService.focusBestSession;
-  static const focusAverageMinutes = data.StatsService.focusAverageMinutes;
+  static int get focusSessionCount => data.StatsService.focusSessionCount;
+  static String get focusBestDay => data.StatsService.focusBestDay;
+  static String get focusBestSession => data.StatsService.focusBestSession;
+  static int get focusAverageMinutes => data.StatsService.focusAverageMinutes;
   static const flashcardsReviewedToday = data.StatsService.flashcardsReviewedToday;
   static const flashcardsMasteredToday = data.StatsService.flashcardsMasteredToday;
   static const flashcardsDueToday = data.StatsService.flashcardsDueToday;

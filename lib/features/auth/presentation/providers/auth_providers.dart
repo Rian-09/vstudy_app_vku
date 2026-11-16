@@ -16,6 +16,7 @@ import 'package:flutter_application_1/features/auth/domain/usecases/update_profi
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/features/progress/data/datasources/stats_service.dart';
+import 'package:flutter_application_1/features/progress/data/datasources/study_session_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   const url = String.fromEnvironment('SUPABASE_URL');
@@ -64,6 +65,7 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
       (failure) => AsyncError(failure.message, StackTrace.current),
       (user) {
         if (user != null) {
+          _startStudyTracking(user.id);
           _hydrateDocuments();
         }
         return AsyncData(user);
@@ -79,6 +81,7 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
     state = result.fold(
       (failure) => AsyncError(failure.message, StackTrace.current),
       (user) {
+        _startStudyTracking(user.id);
         _hydrateQuizBank();
         _hydrateDocuments();
         return AsyncData(user);
@@ -106,6 +109,11 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
         DocumentRepository.instance.startAutoSync();
       }
     }
+  }
+
+  Future<void> _startStudyTracking(String userId) async {
+    await StatsService.instance.loadGoalForUser(userId);
+    await StudySessionService.instance.startForUser(userId);
   }
 
   Future<void> _hydrateQuizBank() async {
@@ -149,6 +157,7 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
   Future<bool> logout() async {
     final result = await _ref.read(logoutUseCaseProvider)(const NoParams());
     if (result.isRight()) {
+      await StudySessionService.instance.clear();
       StatsService.instance.clearRemoteData();
       state = const AsyncData(null);
     }

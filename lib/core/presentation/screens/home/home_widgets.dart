@@ -85,12 +85,14 @@ class StudyProgressCard extends StatelessWidget {
     required this.completedMinutes,
     required this.goalMinutes,
     required this.quizAverage,
+    required this.hasGoal,
   });
 
   final VoidCallback onQuizTap;
   final int completedMinutes;
   final int goalMinutes;
   final int quizAverage;
+  final bool hasGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +145,7 @@ class StudyProgressCard extends StatelessWidget {
                       left: 0,
                       top: 22,
                       child: Text(
-                        '$completedMinutes/$goalMinutes phút',
+                        hasGoal ? '$completedMinutes/$goalMinutes phút' : 'Chưa đặt mục tiêu',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 20,
@@ -158,7 +160,9 @@ class StudyProgressCard extends StatelessWidget {
                       top: 55,
                       width: 164,
                       child: Text(
-                        completedMinutes >= goalMinutes
+                        !hasGoal
+                            ? 'Đặt mục tiêu để bắt đầu theo dõi tiến độ.'
+                            : completedMinutes >= goalMinutes
                             ? 'Bạn đã hoàn thành mục tiêu hôm nay!'
                             : 'Cố lên còn ${goalMinutes - completedMinutes} phút nữa là hoàn thành!!',
                         style: TextStyle(
@@ -189,7 +193,7 @@ class StudyProgressCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          child: const Text('Làm Quiz ngay hôm nay'),
+                          child: Text(hasGoal ? 'Làm Quiz ngay hôm nay' : 'Đặt mục tiêu'),
                         ),
                       ),
                     ),

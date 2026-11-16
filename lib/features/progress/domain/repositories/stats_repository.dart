@@ -2,7 +2,8 @@ import '../../data/models/stats_models.dart';
 
 abstract interface class StatsRepository {
   int get dailyGoalMinutes;
-  void setDailyGoalMinutes(int value);
+  Future<void> setDailyGoalMinutes(int value);
+  bool get hasDailyGoal;
   List<StudyDayStat> get weekDays;
   List<StudyDayStat> get weeklyFocusDays;
   List<StudyDayStat> get flashcardReviewDays;
