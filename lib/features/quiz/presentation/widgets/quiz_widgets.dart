@@ -293,10 +293,16 @@ class SubjectTile extends StatelessWidget {
 }
 
 class ExamTile extends StatelessWidget {
-  const ExamTile({super.key, required this.exam, required this.onTap});
+  const ExamTile({
+    super.key,
+    required this.exam,
+    required this.onTap,
+    this.result,
+  });
 
   final Exam exam;
   final VoidCallback onTap;
+  final QuizResult? result;
 
   Color get _difficultyColor => switch (exam.difficulty) {
     >= 100 => const Color(0xFFE11D48),
@@ -312,6 +318,8 @@ class ExamTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resultScore = result?.score;
+    final completedScore = resultScore ?? exam.score;
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
@@ -380,14 +388,24 @@ class ExamTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (exam.score != null)
+              if (resultScore != null)
                 Text(
-                  exam.score!.toStringAsFixed(1),
+                  '${resultScore.round()}%',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: _scoreColor(exam.score!),
+                    color: _scoreColor(resultScore / 10),
+                  ),
+                )
+              else if (completedScore != null)
+                Text(
+                  completedScore.toStringAsFixed(1),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: _scoreColor(completedScore),
                   ),
                 )
               else

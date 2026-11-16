@@ -6,6 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../theme/auth_theme.dart';
 import 'home_data.dart';
 
+const _weeklyChartLeftInset = 28.0;
+const _weeklyChartRightInset = 4.0;
+
 class GreetingHeader extends StatelessWidget {
   const GreetingHeader({
     super.key,
@@ -493,6 +496,8 @@ class WeeklyChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    final todayIndex = DateTime.now().weekday - 1;
     return Column(
       children: [
         Row(
@@ -549,17 +554,23 @@ class WeeklyChart extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _WeekdayLabel('T2'),
-                          _WeekdayLabel('T3'),
-                          _WeekdayLabel('T4'),
-                          _WeekdayLabel('T5', selected: true),
-                          _WeekdayLabel('T6'),
-                          _WeekdayLabel('T7'),
-                          _WeekdayLabel('CN'),
-                        ],
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: _weeklyChartLeftInset,
+                          right: _weeklyChartRightInset,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            for (var index = 0;
+                                index < weekdays.length;
+                                index++)
+                              _WeekdayLabel(
+                                weekdays[index],
+                                selected: index == todayIndex,
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -580,11 +591,11 @@ class WeeklyChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const leftInset = 28.0;
+    const leftInset = _weeklyChartLeftInset;
     const topInset = 10.0;
     const bottomInset = 7.0;
     final plotHeight = size.height - topInset - bottomInset;
-    final plotWidth = size.width - leftInset - 4;
+    final plotWidth = size.width - leftInset - _weeklyChartRightInset;
     final gridPaint = Paint()
       ..color = const Color(0xFFC0C4E0)
       ..strokeWidth = 1;
@@ -618,10 +629,13 @@ class WeeklyChartPainter extends CustomPainter {
     final slotWidth = plotWidth / values.length;
     final barPaint = Paint()..style = PaintingStyle.fill;
     for (var index = 0; index < values.length; index++) {
-      final barHeight = plotHeight * values[index] / 5;
+      final value = values[index].clamp(0.0, 5.0).toDouble();
+      final barHeight = value == 0
+          ? 0.0
+          : math.max(plotHeight * value / 5, 4.0).toDouble();
       final x = leftInset + slotWidth * index + (slotWidth - barWidth) / 2;
       final y = topInset + plotHeight - barHeight;
-      barPaint.color = index == 3
+      barPaint.color = index == DateTime.now().weekday - 1
           ? const Color(0xFFC9A227)
           : const Color(0xFFF6EBC4);
       canvas.drawRRect(

@@ -48,12 +48,6 @@ class AiService {
     'Mình gợi ý bạn chia nội dung thành 3 phần nhỏ và ôn lại sau mỗi phần để ghi nhớ lâu hơn.',
   ];
 
-  AiSummaryData summaryFor(String documentTitle) => AiSummaryData(
-    title: documentTitle,
-    shortText: 'Tài liệu trình bày các khái niệm nền tảng, mối quan hệ giữa các nội dung và cách vận dụng trong học tập.',
-    detailText: 'Nội dung chính được chia thành các luận điểm: khái niệm cốt lõi, đặc điểm, mối quan hệ tác động qua lại và ví dụ minh họa. Khi ôn tập, hãy ghi nhớ từ khóa trước rồi liên hệ với câu hỏi thực tế.',
-  );
-
   String replyFor(int index) => replies[index % replies.length];
 
   String generateMockTest({

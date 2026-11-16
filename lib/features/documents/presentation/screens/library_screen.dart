@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
-import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
+import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const _libraryGold = Color(0xFFDFA841);
 const _libraryNavy = Color(0xFF1F2A44);
@@ -36,151 +35,184 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final repository = ref.watch(documentRepositoryProvider);
+    final repository = ref.read(documentRepositoryProvider);
     final documentUseCases = ref.read(documentUseCasesProvider);
     return AuthBackground(
       child: SafeArea(
-        child: Builder(
-          builder: (context) {
-            final savedDocuments = repository.savedOrDownloaded;
-            final popularDocuments = repository.documents.take(2).toList();
-            final filteredDocuments = _selectedFolder == 0
-                ? savedDocuments
-                : savedDocuments.where((document) {
-                    if (_selectedFolder == 1) {
-                      return document.category == DocumentCategory.course;
-                    }
-                    return document.category == DocumentCategory.exam;
-                  }).toList();
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(13, 6, 13, 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _LibraryHeader(
-                    onBack: () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(height: 13),
-                  const _LibrarySummaryCard(),
-                  const SizedBox(height: 12),
-                  if (_showAiHint) ...[
-                    AiHintBanner(
-                      onDismiss: () => setState(() => _showAiHint = false),
+        child: AnimatedBuilder(
+          animation: repository,
+          builder: (context, _) => Builder(
+            builder: (context) {
+              final savedDocuments = repository.savedOrDownloaded;
+              final continueReading = repository.continueReadingDocuments;
+              final popularDocuments = repository.documents.take(2).toList();
+              final filteredDocuments = _selectedFolder == 0
+                  ? savedDocuments
+                  : savedDocuments.where((document) {
+                      if (_selectedFolder == 1) {
+                        return document.category == DocumentCategory.course;
+                      }
+                      return document.category == DocumentCategory.exam;
+                    }).toList();
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(13, 6, 13, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _LibraryHeader(
+                      onBack: () => Navigator.of(context).maybePop(),
                     ),
                     const SizedBox(height: 13),
-                  ],
-                  Row(
-                    children: [
-                      const Text(
-                        '▱  Thư mục:',
+                    const _LibrarySummaryCard(),
+                    const SizedBox(height: 12),
+                    if (_showAiHint) ...[
+                      AiHintBanner(
+                        onDismiss: () => setState(() => _showAiHint = false),
+                      ),
+                      const SizedBox(height: 13),
+                    ],
+                    if (continueReading.isNotEmpty) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Đang đọc dở',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AuthColors.navy,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      for (
+                        var index = 0;
+                        index < continueReading.length;
+                        index++
+                      ) ...[
+                        if (index > 0) const SizedBox(height: 9),
+                        DownloadProgressTile(
+                          document: continueReading[index],
+                          onOpen: () => _openDocument(continueReading[index]),
+                          onContinue: () =>
+                              _openDocument(continueReading[index]),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                    ],
+                    Row(
+                      children: [
+                        const Text(
+                          '▱  Thư mục:',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF786149),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: SizedBox(
+                            height: 29,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _folders.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(width: 5),
+                              itemBuilder: (context, index) {
+                                final selected = index == _selectedFolder;
+                                return Material(
+                                  color: selected
+                                      ? Colors.white
+                                      : const Color(0xB3FFFFFF),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: InkWell(
+                                    onTap: () =>
+                                        setState(() => _selectedFolder = index),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      child: Text(
+                                        _folders[index],
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 9,
+                                          fontWeight: selected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: selected
+                                              ? const Color(0xFFB45309)
+                                              : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 202,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: popularDocuments.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final document = popularDocuments[index];
+                          return DocCard(
+                            document: document,
+                            onOpen: () => _openDocument(document),
+                            onDownload: () => _openDocument(document),
+                            onToggleSaved: () =>
+                                documentUseCases.toggleSaved(document.id),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Đang xem',
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 9,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF786149),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: SizedBox(
-                          height: 29,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _folders.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(width: 5),
-                            itemBuilder: (context, index) {
-                              final selected = index == _selectedFolder;
-                              return Material(
-                                color: selected
-                                    ? Colors.white
-                                    : const Color(0xB3FFFFFF),
-                                borderRadius: BorderRadius.circular(20),
-                                child: InkWell(
-                                  onTap: () =>
-                                      setState(() => _selectedFolder = index),
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    child: Text(
-                                      _folders[index],
-                                      style: TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 9,
-                                        fontWeight: selected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                        color: selected
-                                            ? const Color(0xFFB45309)
-                                            : const Color(0xFF64748B),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                    ),
+                    const SizedBox(height: 7),
+                    if (filteredDocuments.isEmpty)
+                      const _LibraryEmptyState()
+                    else
+                      for (
+                        var index = 0;
+                        index < filteredDocuments.length;
+                        index++
+                      ) ...[
+                        if (index > 0) const SizedBox(height: 9),
+                        DownloadProgressTile(
+                          document: filteredDocuments[index],
+                          onOpen: () => _openDocument(filteredDocuments[index]),
+                          onContinue: () =>
+                              _openDocument(filteredDocuments[index]),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 202,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: popularDocuments.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final document = popularDocuments[index];
-                        return DocCard(
-                          document: document,
-                          onOpen: () => _openDocument(document),
-                          onDownload: () => _openDocument(document),
-                          onToggleSaved: () =>
-                              documentUseCases.toggleSaved(document.id),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Đang xem',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF786149),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  if (filteredDocuments.isEmpty)
-                    const _LibraryEmptyState()
-                  else
-                    for (
-                      var index = 0;
-                      index < filteredDocuments.length;
-                      index++
-                    ) ...[
-                      if (index > 0) const SizedBox(height: 9),
-                      DownloadProgressTile(
-                        document: filteredDocuments[index],
-                        onOpen: () => _openDocument(filteredDocuments[index]),
-                        onContinue: () =>
-                            _openDocument(filteredDocuments[index]),
-                      ),
-                    ],
-                ],
-              ),
-            );
-          },
+                      ],
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

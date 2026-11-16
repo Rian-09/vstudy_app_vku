@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'package:flutter_application_1/features/documents/data/models/document.dart';
@@ -9,8 +7,10 @@ import 'package:flutter_application_1/features/progress/data/datasources/study_s
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
-import 'home_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'home_data.dart';
+import 'home_widgets.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -41,7 +41,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Text(
             authState.isLoading
                 ? 'Đang tải hồ sơ...'
-                : authState.error?.toString() ?? 'Không tìm thấy hồ sơ người dùng.',
+                : authState.error?.toString() ??
+                      'Không tìm thấy hồ sơ người dùng.',
             textAlign: TextAlign.center,
           ),
         ),
@@ -71,7 +72,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: GreetingHeader(
                       userName: userName,
                       avatarAsset:
-                          user.avatarUrl ?? 'assets/images/home/home_avatar.png',
+                          user.avatarUrl ??
+                          'assets/images/home/home_avatar.png',
                       onAvatarTap: _openProfile,
                     ),
                   ),
@@ -102,7 +104,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 26),
                   UpcomingDeadlines(
-                    items: _upcomingItems(scheduleState.valueOrNull ?? const []),
+                    items: _upcomingItems(
+                      scheduleState.valueOrNull ?? const [],
+                    ),
                     onSeeAllTap: () => _showMessage(
                       context,
                       'Danh sách đầy đủ sẽ sớm khả dụng.',
@@ -141,14 +145,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       );
     }
-    final inProgressDocument = documents.savedOrDownloaded
-        .where((document) => document.progress > 0 && document.progress < 1)
-        .fold<StudyDocument?>(null, (current, document) {
-          if (current == null || document.progress > current.progress) {
-            return document;
-          }
-          return current;
-        });
+    final inProgressDocument = documents.continueReadingDocuments.isEmpty
+        ? null
+        : documents.continueReadingDocuments.first;
     if (inProgressDocument != null) {
       items.add(_documentItem(inProgressDocument));
     }
@@ -190,43 +189,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   List<DeadlineItem> _upcomingItems(List<CalendarEvent> events) {
     final now = DateTime.now();
-    final upcoming = events
-        .where(
-          (event) =>
-              event.endsAt.isAfter(now) &&
-              event.status != CalendarEventStatus.done,
-        )
-        .toList()
-      ..sort((first, second) => first.startsAt.compareTo(second.startsAt));
-    return upcoming.take(3).map((event) {
-      final remaining = event.startsAt.difference(now);
-      final hours = remaining.inHours;
-      final today = DateTime(now.year, now.month, now.day);
-      final dateOnly = DateTime(event.date.year, event.date.month, event.date.day);
-      final days = dateOnly.difference(today).inDays;
-      final dateLabel = days == 0
-          ? 'Hôm nay'
-          : days == 1
-          ? 'Ngày mai'
-          : '${event.date.day.toString().padLeft(2, '0')}/${event.date.month.toString().padLeft(2, '0')}';
-      final isDeadline = event.type == CalendarEventType.deadline;
-      return DeadlineItem(
-        title: event.title,
-        schedule:
-            '$dateLabel ${formatCalendarTime(event.startTime)} - ${formatCalendarTime(event.endTime)}',
-        tag: isDeadline ? 'Deadline' : 'Lịch học',
-        remaining: hours > 0 ? 'Còn ${hours}h' : 'Còn ${remaining.inMinutes}p',
-        color: isDeadline
-            ? const Color(0xFFFB2323)
-            : const Color(0xFF1F2A44),
-        tagColor: isDeadline
-            ? const Color(0xFF880E0E)
-            : const Color(0xFF731647),
-        remainingColor: isDeadline
-            ? const Color(0xFFCF0909)
-            : const Color(0xB31F2A44),
-      );
-    }).toList(growable: false);
+    final upcoming =
+        events
+            .where(
+              (event) =>
+                  event.endsAt.isAfter(now) &&
+                  event.status != CalendarEventStatus.done,
+            )
+            .toList()
+          ..sort((first, second) => first.startsAt.compareTo(second.startsAt));
+    return upcoming
+        .take(3)
+        .map((event) {
+          final remaining = event.startsAt.difference(now);
+          final hours = remaining.inHours;
+          final today = DateTime(now.year, now.month, now.day);
+          final dateOnly = DateTime(
+            event.date.year,
+            event.date.month,
+            event.date.day,
+          );
+          final days = dateOnly.difference(today).inDays;
+          final dateLabel = days == 0
+              ? 'Hôm nay'
+              : days == 1
+              ? 'Ngày mai'
+              : '${event.date.day.toString().padLeft(2, '0')}/${event.date.month.toString().padLeft(2, '0')}';
+          final isDeadline = event.type == CalendarEventType.deadline;
+          return DeadlineItem(
+            title: event.title,
+            schedule:
+                '$dateLabel ${formatCalendarTime(event.startTime)} - ${formatCalendarTime(event.endTime)}',
+            tag: isDeadline ? 'Deadline' : 'Lịch học',
+            remaining: hours > 0
+                ? 'Còn ${hours}h'
+                : 'Còn ${remaining.inMinutes}p',
+            color: isDeadline
+                ? const Color(0xFFFB2323)
+                : const Color(0xFF1F2A44),
+            tagColor: isDeadline
+                ? const Color(0xFF880E0E)
+                : const Color(0xFF731647),
+            remainingColor: isDeadline
+                ? const Color(0xFFCF0909)
+                : const Color(0xB31F2A44),
+          );
+        })
+        .toList(growable: false);
   }
 
   Future<void> _openProfile() async {

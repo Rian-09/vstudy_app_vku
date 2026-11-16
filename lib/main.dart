@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'features/schedule/data/models/calendar_event.dart';
-import 'features/schedule/data/datasources/reminder_service.dart';
-import 'features/ai_planner/presentation/screens/ai_home_screen.dart';
-import 'features/auth/presentation/screens/login_screen.dart';
-import 'features/auth/presentation/screens/register_screen.dart';
-import 'features/schedule/presentation/screens/event_detail_screen.dart';
-import 'features/schedule/presentation/screens/event_form_screen.dart';
-import 'features/documents/presentation/screens/document_viewer_screen.dart';
 import 'core/presentation/main_shell.dart';
+import 'core/presentation/screens/splash/splash_screen.dart';
+import 'features/ai_planner/data/models/ai_models.dart';
+import 'features/ai_planner/presentation/screens/ai_home_screen.dart';
+import 'features/ai_planner/presentation/screens/ai_summary_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/profile/edit_profile_screen.dart';
 import 'features/auth/presentation/screens/profile/profile_screen.dart';
-import 'core/presentation/screens/splash/splash_screen.dart';
+import 'features/auth/presentation/screens/register_screen.dart';
+import 'features/documents/presentation/screens/document_viewer_screen.dart';
+import 'features/schedule/data/datasources/reminder_service.dart';
+import 'features/schedule/data/models/calendar_event.dart';
+import 'features/schedule/presentation/screens/event_detail_screen.dart';
+import 'features/schedule/presentation/screens/event_form_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,57 +36,62 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderScope(
       child: MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const SplashScreen(),
-      routes: {
-        '/login': (context) {
-          final initialEmail =
-              ModalRoute.of(context)?.settings.arguments as String?;
-          return LoginScreen(initialEmail: initialEmail);
-        },
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const MainShell(),
-        '/ai': (context) => AiNavigationHost(
-          shellArgs:
-              ModalRoute.of(context)?.settings.arguments
-                  as MainShellNavigationArgs?,
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          // This is the theme of your application.
+          //
+          // TRY THIS: Try running your application with "flutter run". You'll see
+          // the application has a purple toolbar. Then, without quitting the app,
+          // try changing the seedColor in the colorScheme below to Colors.green
+          // and then invoke "hot reload" (save your changes or press the "hot
+          // reload" button in a Flutter-supported IDE, or press "r" if you used
+          // the command line to start the app).
+          //
+          // Notice that the counter didn't reset back to zero; the application
+          // state is not lost during the reload. To reset the state, use hot
+          // restart instead.
+          //
+          // This works for code too, not just values: Most code changes can be
+          // tested with just a hot reload.
+          colorScheme: .fromSeed(seedColor: Colors.deepPurple),
         ),
-        '/profile': (context) => const ProfileScreen(),
-        '/edit-profile': (context) => const EditProfileScreen(),
-        '/calendar': (context) => const MainShell(initialIndex: 0),
-        '/calendar/event-form': (context) => EventFormScreen(
-          event: ModalRoute.of(context)?.settings.arguments as CalendarEvent?,
-        ),
-        '/calendar/event-detail': (context) {
-          final eventId = ModalRoute.of(context)!.settings.arguments as String;
-          return EventDetailScreen(eventId: eventId);
+        home: const SplashScreen(),
+        routes: {
+          '/login': (context) {
+            final initialEmail =
+                ModalRoute.of(context)?.settings.arguments as String?;
+            return LoginScreen(initialEmail: initialEmail);
+          },
+          '/register': (context) => const RegisterScreen(),
+          '/home': (context) => const MainShell(),
+          '/ai': (context) => AiNavigationHost(
+            shellArgs:
+                ModalRoute.of(context)?.settings.arguments
+                    as MainShellNavigationArgs?,
+          ),
+          '/ai/summary': (context) => AiSummaryScreen(
+            request:
+                ModalRoute.of(context)!.settings.arguments as AiSummaryRequest,
+          ),
+          '/profile': (context) => const ProfileScreen(),
+          '/edit-profile': (context) => const EditProfileScreen(),
+          '/calendar': (context) => const MainShell(initialIndex: 0),
+          '/calendar/event-form': (context) => EventFormScreen(
+            event: ModalRoute.of(context)?.settings.arguments as CalendarEvent?,
+          ),
+          '/calendar/event-detail': (context) {
+            final eventId =
+                ModalRoute.of(context)!.settings.arguments as String;
+            return EventDetailScreen(eventId: eventId);
+          },
+          '/documents/viewer': (context) {
+            final documentId =
+                ModalRoute.of(context)!.settings.arguments as String;
+            return DocumentViewerScreen(documentId: documentId);
+          },
+          '/documents/library': (context) =>
+              const MainShell(initialIndex: 4, showLibrary: true),
         },
-        '/documents/viewer': (context) {
-          final documentId =
-              ModalRoute.of(context)!.settings.arguments as String;
-          return DocumentViewerScreen(documentId: documentId);
-        },
-        '/documents/library': (context) =>
-            const MainShell(initialIndex: 4, showLibrary: true),
-      },
       ),
     );
   }

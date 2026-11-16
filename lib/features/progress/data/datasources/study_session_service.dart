@@ -38,6 +38,7 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
   DateTime? _startedAt;
   List<StudySessionRecord> _records = const [];
   Timer? _refreshTimer;
+  bool _isObservingLifecycle = false;
 
   bool get hasActiveSession => _startedAt != null;
   List<StudySessionRecord> get records => List.unmodifiable(_records);
@@ -59,11 +60,8 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
       }
     }
     _startedAt = DateTime.now();
-    WidgetsBinding.instance.addObserver(this);
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      notifyListeners();
-    });
+    _observeLifecycle();
+    _startRefreshTimer();
     notifyListeners();
   }
 
@@ -72,6 +70,7 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
     if (state == AppLifecycleState.resumed) {
       if (_userId != null && _startedAt == null) {
         _startedAt = DateTime.now();
+        _startRefreshTimer();
         notifyListeners();
       }
     } else if (state == AppLifecycleState.paused ||
@@ -88,7 +87,6 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
     _refreshTimer?.cancel();
     _refreshTimer = null;
     if (startedAt == null || userId == null) return;
-    WidgetsBinding.instance.removeObserver(this);
     final endedAt = DateTime.now();
     if (endedAt.difference(startedAt).inSeconds < 1) return;
     _records = [..._records, StudySessionRecord(startedAt: startedAt, endedAt: endedAt)];
@@ -102,9 +100,26 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
 
   Future<void> clear() async {
     await stop();
+    if (_isObservingLifecycle) {
+      WidgetsBinding.instance.removeObserver(this);
+      _isObservingLifecycle = false;
+    }
     _userId = null;
     _records = const [];
     notifyListeners();
+  }
+
+  void _observeLifecycle() {
+    if (_isObservingLifecycle) return;
+    WidgetsBinding.instance.addObserver(this);
+    _isObservingLifecycle = true;
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      notifyListeners();
+    });
   }
 
   List<StudySessionRecord> recordsForDate(DateTime date) {

@@ -1,15 +1,16 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pdfx/pdfx.dart';
-
-import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
-import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
+import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
+import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pdfx/pdfx.dart';
 
 const _viewerWarmText = Color(0xFF554336);
 
@@ -26,6 +27,8 @@ class DocumentViewerScreen extends ConsumerStatefulWidget {
 class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
   int _currentPage = 0;
   bool _showAiHint = true;
+  bool _hasReadPage = false;
+  final DateTime _sessionStartedAt = DateTime.now();
   PdfControllerPinch? _pdfController;
   late final Future<Uint8List?> _pdfFuture;
 
@@ -39,13 +42,12 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     final document = ref
         .read(documentUseCasesProvider)
         .findById(widget.documentId);
-    if (document == null) return Future.value(null);
+    if (document == null || document.type.toLowerCase() != 'pdf') {
+      return Future.value(null);
+    }
     return ref
-        .read(documentStorageDataSourceProvider)
-        .getOnlineOrCached(
-          documentId: document.id,
-          filePath: document.filePath,
-        );
+        .read(documentUseCasesProvider)
+        .getDocumentBytes(widget.documentId);
   }
 
   StudyDocument get _document =>
@@ -55,6 +57,18 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
   @override
   void dispose() {
     _pdfController?.dispose();
+    if (_hasReadPage) {
+      unawaited(
+        ref
+            .read(documentUseCasesProvider)
+            .recordReadingSession(
+              documentId: widget.documentId,
+              startedAt: _sessionStartedAt,
+              endedAt: DateTime.now(),
+            )
+            .catchError((_) {}),
+      );
+    }
     super.dispose();
   }
 
@@ -67,9 +81,12 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
         }
         final bytes = snapshot.data;
         if (bytes == null || bytes.isEmpty) {
-          return const Center(
+          final message = _document.type.toLowerCase() == 'pdf'
+              ? 'Tài liệu chưa có file PDF hoặc chưa được tải xuống.'
+              : 'Đã lưu tài liệu. Hiện tại ứng dụng chỉ hỗ trợ xem trước PDF.';
+          return Center(
             child: Text(
-              'Tài liệu chưa có file PDF hoặc chưa được tải xuống.',
+              message,
               textAlign: TextAlign.center,
               style: TextStyle(color: _viewerWarmText),
             ),
@@ -80,7 +97,22 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
         );
         return PdfViewPinch(
           controller: _pdfController!,
-          onPageChanged: (page) => setState(() => _currentPage = page - 1),
+          onPageChanged: (page) {
+            setState(() {
+              _currentPage = page - 1;
+              _hasReadPage = true;
+            });
+            unawaited(
+              ref
+                  .read(documentUseCasesProvider)
+                  .updateReadingProgress(
+                    documentId: widget.documentId,
+                    currentPage: page,
+                    totalPages: _pdfController?.pagesCount ?? _document.pages,
+                  )
+                  .catchError((_) {}),
+            );
+          },
         );
       },
     );
@@ -107,13 +139,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     }
 
     try {
-      await ref
-          .read(documentStorageDataSourceProvider)
-          .downloadAndCache(
-            documentId: document.id,
-            filePath: document.filePath!,
-            document: document,
-          );
+      await ref.read(documentUseCasesProvider).downloadDocument(document.id);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +169,17 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     );
   }
 
+  void _summarizeCurrentDocument() {
+    final document = _document;
+    Navigator.of(context, rootNavigator: true).pushNamed<void>(
+      '/ai/summary',
+      arguments: AiSummaryRequest(
+        title: document.title,
+        documentId: document.id,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final documentUseCases = ref.read(documentUseCasesProvider);
@@ -159,6 +196,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                 onToggleSaved: () => documentUseCases.toggleSaved(document.id),
                 onOpenLibrary: () =>
                     Navigator.of(context).pushNamed('/documents/library'),
+                onSummarize: _summarizeCurrentDocument,
               ),
               Expanded(
                 child: LayoutBuilder(
@@ -229,12 +267,14 @@ class _ViewerHeader extends StatelessWidget {
     required this.onBack,
     required this.onToggleSaved,
     required this.onOpenLibrary,
+    required this.onSummarize,
   });
 
   final StudyDocument document;
   final VoidCallback onBack;
   final VoidCallback onToggleSaved;
   final VoidCallback onOpenLibrary;
+  final VoidCallback onSummarize;
 
   @override
   Widget build(BuildContext context) {
@@ -292,15 +332,38 @@ class _ViewerHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: IconButton(
-              onPressed: onOpenLibrary,
-              tooltip: 'Thư viện tài liệu',
-              padding: EdgeInsets.zero,
-              icon: SvgPicture.asset(
-                'assets/images/documents/library_bookmarks.svg',
-                width: 22,
-                height: 22,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: onSummarize,
+                  tooltip: 'Tóm tắt bằng AI',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 34,
+                    height: 44,
+                  ),
+                  icon: const Icon(
+                    Icons.auto_awesome,
+                    size: 20,
+                    color: AuthColors.navy,
+                  ),
+                ),
+                IconButton(
+                  onPressed: onOpenLibrary,
+                  tooltip: 'Thư viện tài liệu',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 30,
+                    height: 44,
+                  ),
+                  icon: SvgPicture.asset(
+                    'assets/images/documents/library_bookmarks.svg',
+                    width: 22,
+                    height: 22,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

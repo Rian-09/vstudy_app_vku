@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../datasources/document_remote_datasource.dart';
 import '../datasources/document_sync_queue.dart';
 import '../local/documents_database.dart';
+import '../repositories/progress_repository.dart';
 
 @immutable
 class StudyDocument {
@@ -25,6 +26,7 @@ class StudyDocument {
     required this.downloads,
     required this.updatedAt,
     this.filePath,
+    this.userId,
   });
 
   final String id;
@@ -42,12 +44,13 @@ class StudyDocument {
   final int downloads;
   final String updatedAt;
   final String? filePath;
+  final String? userId;
 
   factory StudyDocument.fromSupabase(Map<String, dynamic> json) {
     final subject = json['subjects'];
-    final subjectName = subject is Map<String, dynamic>
-        ? (subject['name'] as String? ?? 'Chưa phân loại')
-        : 'Chưa phân loại';
+    final joinedSubject = subject is Map ? subject['name'] as String? : null;
+    final subjectName =
+        (json['subject'] as String?) ?? joinedSubject ?? 'Chưa phân loại';
     final categoryValue = json['category'] as String?;
     final category = categoryValue == 'course'
         ? DocumentCategory.course
@@ -64,7 +67,7 @@ class StudyDocument {
       subject: subjectName,
       author: 'V-Study',
       type: fileType,
-      size: _formatSize(json['file_size_bytes']),
+      size: _formatSize(json['file_size'] ?? json['file_size_bytes']),
       pages: (json['page_count'] as num?)?.toInt() ?? 0,
       thumbnail: category == DocumentCategory.course
           ? 'assets/images/documents/slide_history.png'
@@ -76,6 +79,7 @@ class StudyDocument {
       downloads: 0,
       updatedAt: updatedAt,
       filePath: json['file_path'] as String?,
+      userId: json['user_id'] as String?,
     );
   }
 
@@ -94,7 +98,7 @@ class StudyDocument {
       thumbnail: row.thumbnail ?? 'assets/images/documents/exam_history.png',
       isDownloaded: true,
       isSaved: row.isSaved,
-      progress: row.progress,
+      progress: 0,
       category: category,
       downloads: row.downloads ?? 0,
       updatedAt: row.updatedAt ?? '',
@@ -106,7 +110,9 @@ class StudyDocument {
     bool? isDownloaded,
     bool? isSaved,
     double? progress,
+    int? pages,
     String? filePath,
+    String? userId,
   }) {
     return StudyDocument(
       id: id,
@@ -115,7 +121,7 @@ class StudyDocument {
       author: author,
       type: type,
       size: size,
-      pages: pages,
+      pages: pages ?? this.pages,
       thumbnail: thumbnail,
       isDownloaded: isDownloaded ?? this.isDownloaded,
       isSaved: isSaved ?? this.isSaved,
@@ -124,6 +130,7 @@ class StudyDocument {
       downloads: downloads,
       updatedAt: updatedAt,
       filePath: filePath ?? this.filePath,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -149,124 +156,94 @@ class StudyDocument {
 enum DocumentCategory { course, exam }
 
 class DocumentRepository extends ChangeNotifier {
-  DocumentRepository._();
+  DocumentRepository._() : _documents = [];
+
+  @visibleForTesting
+  DocumentRepository.forTesting({
+    List<StudyDocument> initialDocuments = const [],
+  }) : _documents = List.of(initialDocuments);
 
   static final DocumentRepository instance = DocumentRepository._();
 
-  final List<StudyDocument> _documents = [
-    StudyDocument(
-      id: 'history-slides-2',
-      title: 'Slide bài giảng Chương 2 - Lịch sử Đảng',
-      subject: 'Lịch sử Đảng',
-      author: 'GV: Nguyễn Thị Mai',
-      type: 'Slide',
-      size: '43MB',
-      pages: 72,
-      thumbnail: 'assets/images/documents/slide_history.png',
-      isDownloaded: false,
-      isSaved: true,
-      progress: 0.8,
-      category: DocumentCategory.course,
-      downloads: 2093,
-      updatedAt: '12/10/2024',
-    ),
-    StudyDocument(
-      id: 'law-book-1',
-      title: 'Slide Chương 1 - Pháp luật đại cương',
-      subject: 'Pháp luật đại cương',
-      author: 'GV: Nguyễn Thị Mai',
-      type: 'Slide',
-      size: '6.8MB',
-      pages: 50,
-      thumbnail: 'assets/images/documents/law_book.png',
-      isDownloaded: false,
-      isSaved: true,
-      progress: 0.5,
-      category: DocumentCategory.course,
-      downloads: 592,
-      updatedAt: '08/09/2024',
-    ),
-    StudyDocument(
-      id: 'network-slides-3',
-      title: 'Slide Chương 3 - Mạng máy tính',
-      subject: 'Mạng máy tính',
-      author: 'GV: Võ Văn Lương',
-      type: 'Slide',
-      size: '6.8MB',
-      pages: 85,
-      thumbnail: 'assets/images/documents/network_course.png',
-      isDownloaded: false,
-      isSaved: true,
-      progress: 0.2,
-      category: DocumentCategory.course,
-      downloads: 1892,
-      updatedAt: '12/10/2024',
-    ),
-    StudyDocument(
-      id: 'philosophy-exam',
-      title: 'Đề thi chuẩn kèm đáp án chi tiết môn Triết học Mác - Lênin',
-      subject: 'Triết học Mác-Lênin',
-      author: 'GV: Trần Văn Thái',
-      type: 'Đề thi',
-      size: '3MB',
-      pages: 57,
-      thumbnail: 'assets/images/documents/exam_history.png',
-      isDownloaded: false,
-      isSaved: false,
-      progress: 0,
-      category: DocumentCategory.exam,
-      downloads: 2329,
-      updatedAt: '12/08/2024',
-    ),
-    StudyDocument(
-      id: 'software-report',
-      title: 'Báo cáo đồ án chuyên ngành 2 (SE)',
-      subject: 'Công nghệ phần mềm',
-      author: 'GV: Võ Văn Lương',
-      type: 'Báo cáo',
-      size: '6.8MB',
-      pages: 85,
-      thumbnail: 'assets/images/documents/essay_report.png',
-      isDownloaded: false,
-      isSaved: false,
-      progress: 0,
-      category: DocumentCategory.exam,
-      downloads: 1293,
-      updatedAt: '12/10/2024',
-    ),
-    StudyDocument(
-      id: 'computer-network-exam',
-      title: 'Đề cương ôn tập Mạng máy tính',
-      subject: 'Mạng máy tính',
-      author: 'GV: Nguyễn Thị Mai',
-      type: 'Đề cương',
-      size: '8.2MB',
-      pages: 72,
-      thumbnail: 'assets/images/documents/algorithm_slides.png',
-      isDownloaded: false,
-      isSaved: false,
-      progress: 0,
-      category: DocumentCategory.exam,
-      downloads: 837,
-      updatedAt: '12/10/2024',
-    ),
-  ];
+  final List<StudyDocument> _documents;
+  final List<StudyDocument> _continueReadingDocuments = [];
+  bool isLoading = false;
+  String? loadError;
 
   Future<void> hydrateFromSupabase() async {
-    final client = Supabase.instance.client;
-    final remote = await DocumentRemoteDataSource(client)
-        .fetchPublishedDocuments();
-    final cachedIds = await DocumentsDatabase.instance.cachedDocumentIds();
-    _documents
-      ..clear()
-      ..addAll(
-        remote.map(
-          (document) => cachedIds.contains(document.id)
-              ? document.copyWith(isDownloaded: true, progress: 1)
-              : document,
-        ),
-      );
+    isLoading = true;
+    loadError = null;
     notifyListeners();
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        _documents.clear();
+        _continueReadingDocuments.clear();
+        return;
+      }
+      final remote = await DocumentRemoteDataSource(client).fetchDocuments();
+      final progressRepository = ProgressRepository(client);
+      final progressRows = await progressRepository.getReadingProgress();
+      final libraryRows = await client
+          .from('document_progress')
+          .select('document_id, is_saved, is_downloaded')
+          .eq('owner_id', userId);
+      final libraryByDocument = {
+        for (final row in libraryRows)
+          (row as Map)['document_id'] as String: Map<String, dynamic>.from(row),
+      };
+      final progressByDocument = {
+        for (final row in progressRows) row['document_id'] as String: row,
+      };
+      Set<String> cachedIds = {};
+      try {
+        cachedIds = await DocumentsDatabase.instance.cachedDocumentIds();
+      } catch (_) {
+        // Remote lists must still work where the local Drift store is unavailable.
+      }
+      _documents
+        ..clear()
+        ..addAll(
+          remote.map((document) {
+            final progress = progressByDocument[document.id];
+            final library = libraryByDocument[document.id];
+            final cached = cachedIds.contains(document.id);
+            final percent = (progress?['percent'] as num?)?.toDouble();
+            return document.copyWith(
+              isDownloaded: cached || library?['is_downloaded'] == true,
+              progress: percent == null ? 0 : (percent / 100).clamp(0, 1),
+              isSaved: library?['is_saved'] == true,
+            );
+          }),
+        );
+      final documentsById = {
+        for (final document in _documents) document.id: document,
+      };
+      _continueReadingDocuments
+        ..clear()
+        ..addAll(
+          progressRows
+              .where((row) {
+                final percent = (row['percent'] as num?)?.toDouble() ?? 0;
+                return percent > 0 && percent < 100;
+              })
+              .map((row) {
+                final document = documentsById[row['document_id']];
+                if (document == null) return null;
+                final percent = (row['percent'] as num).toDouble();
+                return document.copyWith(progress: percent / 100);
+              })
+              .whereType<StudyDocument>()
+              .take(3),
+        );
+    } catch (error) {
+      loadError = error.toString();
+      rethrow;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> hydrateFromCache() async {
@@ -275,11 +252,98 @@ class DocumentRepository extends ChangeNotifier {
         .where((row) => row.title != null)
         .map(StudyDocument.fromCache)
         .toList(growable: false);
-    if (documents.isEmpty) return;
     _documents
       ..clear()
       ..addAll(documents);
+    _continueReadingDocuments.clear();
     notifyListeners();
+  }
+
+  Future<StudyDocument> uploadDocument({
+    required String title,
+    required String subject,
+    required String fileName,
+    required String fileType,
+    required Uint8List bytes,
+  }) async {
+    final uploaded = await DocumentRemoteDataSource(Supabase.instance.client)
+        .uploadDocument(
+          title: title,
+          subject: subject,
+          fileName: fileName,
+          fileType: fileType,
+          bytes: bytes,
+        );
+    _documents.insert(0, uploaded);
+    notifyListeners();
+    return uploaded;
+  }
+
+  Future<void> deleteDocument(String id) async {
+    final document = findById(id);
+    if (document == null || document.userId == null) return;
+    await DocumentRemoteDataSource(Supabase.instance.client)
+        .deleteDocument(id: document.id, filePath: document.filePath);
+    _documents.removeWhere((item) => item.id == id);
+    _continueReadingDocuments.removeWhere((item) => item.id == id);
+    notifyListeners();
+  }
+
+  Future<String> getSignedUrl(String id) async {
+    final document = findById(id);
+    if (document == null || document.filePath == null) {
+      throw StateError('Không tìm thấy đường dẫn tài liệu.');
+    }
+    return DocumentRemoteDataSource(Supabase.instance.client)
+        .getSignedUrl(document.filePath!);
+  }
+
+  Future<void> updateReadingProgress({
+    required String documentId,
+    required int currentPage,
+    required int totalPages,
+  }) async {
+    final document = findById(documentId);
+    if (document == null) return;
+    final progress = totalPages == 0
+        ? 0.0
+        : (currentPage / totalPages).clamp(0, 1).toDouble();
+    final index = _documents.indexWhere((item) => item.id == documentId);
+    if (index >= 0) {
+      _documents[index] = _documents[index].copyWith(
+        progress: progress,
+        pages: totalPages > 0 ? totalPages : null,
+      );
+      final updatedDocument = _documents[index];
+      _continueReadingDocuments.removeWhere((item) => item.id == documentId);
+      if (progress > 0 && progress < 1) {
+        _continueReadingDocuments.insert(0, updatedDocument);
+        if (_continueReadingDocuments.length > 3) {
+          _continueReadingDocuments.removeLast();
+        }
+      }
+      notifyListeners();
+    }
+    await ProgressRepository(Supabase.instance.client).saveReadingProgress(
+      documentId: documentId,
+      currentPage: currentPage,
+      totalPages: totalPages,
+    );
+  }
+
+  Future<void> recordReadingSession({
+    required String documentId,
+    required DateTime startedAt,
+    required DateTime endedAt,
+  }) async {
+    final document = findById(documentId);
+    if (document == null) return;
+    await ProgressRepository(Supabase.instance.client).recordSession(
+      documentId: documentId,
+      subject: document.subject,
+      startedAt: startedAt,
+      endedAt: endedAt,
+    );
   }
 
   Future<void> syncPendingChanges() async {
@@ -291,6 +355,8 @@ class DocumentRepository extends ChangeNotifier {
   }
 
   List<StudyDocument> get documents => List.unmodifiable(_documents);
+  List<StudyDocument> get continueReadingDocuments =>
+      List.unmodifiable(_continueReadingDocuments);
 
   List<StudyDocument> get savedOrDownloaded => List.unmodifiable(
     _documents.where(
@@ -304,6 +370,18 @@ class DocumentRepository extends ChangeNotifier {
       if (document.id == id) return document;
     }
     return null;
+  }
+
+  Future<StudyDocument?> getById(String id) async {
+    final cached = findById(id);
+    if (cached != null) return cached;
+    final row = await DocumentRemoteDataSource(Supabase.instance.client)
+        .getById(id);
+    if (row == null) return null;
+    final document = StudyDocument.fromSupabase(row);
+    _documents.add(document);
+    notifyListeners();
+    return document;
   }
 
   void markDownloaded(String id) => _update(

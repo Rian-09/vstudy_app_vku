@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
+import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
@@ -83,15 +84,14 @@ class _QuizHomeScreenState extends ConsumerState<QuizHomeScreen> {
     Navigator.of(context).pushNamed<void>('/subject', arguments: subject.id);
   }
 
-  void _openExam(Exam exam) {
-    Navigator.of(context).pushNamed<void>('/exam', arguments: exam.id);
+  void _openResult(QuizResult result) {
+    Navigator.of(context).pushNamed<void>('/quiz/result', arguments: result);
   }
 
   @override
   Widget build(BuildContext context) {
     final quiz = ref.read(quizUseCasesProvider);
     final subjects = quiz.subjects;
-    final results = quiz.recentResults;
     final wrongQuestions = subjects
         .expand((subject) => quiz.wrongQuestionsForSubject(subject.id))
         .toList(growable: false);
@@ -206,17 +206,31 @@ class _QuizHomeScreenState extends ConsumerState<QuizHomeScreen> {
                     ),
                   ),
                 ),
-                for (var index = 0; index < results.length; index++) ...[
-                  if (index > 0) const SizedBox(height: 8),
-                  Builder(
-                    builder: (context) {
-                      final result = results[index];
-                      final exam = quiz.examById(result.examId);
-                      if (exam == null) return const SizedBox.shrink();
-                      return ExamTile(exam: exam, onTap: () => _openExam(exam));
-                    },
-                  ),
-                ],
+                AnimatedBuilder(
+                  animation: QuizService.instance,
+                  builder: (context, _) {
+                    final results = quiz.recentResults;
+                    return Column(
+                      children: [
+                        for (var index = 0; index < results.length; index++) ...[
+                          if (index > 0) const SizedBox(height: 8),
+                          Builder(
+                            builder: (context) {
+                              final result = results[index];
+                              final exam = quiz.examById(result.examId);
+                              if (exam == null) return const SizedBox.shrink();
+                              return ExamTile(
+                                exam: exam,
+                                result: result,
+                                onTap: () => _openResult(result),
+                              );
+                            },
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
               ],
               if (_filter == _QuizFilter.wrong) ...[
                 const Padding(

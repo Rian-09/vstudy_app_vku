@@ -1,16 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/quiz/domain/usecases/quiz_usecases.dart';
-import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
-import 'submit_confirm_dialog.dart';
+import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
+import 'package:flutter_application_1/features/quiz/domain/usecases/quiz_usecases.dart';
+import 'package:flutter_application_1/features/quiz/presentation/providers/quiz_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'quiz_result_screen.dart';
+import 'submit_confirm_dialog.dart';
 
 const _playGreen = Color(0xFF059669);
 const _playGreenTint = Color(0xFFECFDF5);
@@ -31,7 +31,8 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
   late final QuizUseCases _quiz;
   final Set<int> _bookmarkedQuestions = {};
   Timer? _timer;
-  late int _remainingSeconds;
+  int _remainingSeconds = 0;
+  bool _isReady = false;
   bool _isShowingSubmit = false;
 
   Exam get _exam => _quiz.activeExam!;
@@ -44,22 +45,28 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
   void initState() {
     super.initState();
     _quiz = ref.read(quizUseCasesProvider);
-    _quiz.startSession(widget.examId, timed: widget.isTimed);
-    _remainingSeconds = _exam.durationMinutes * 60;
-    if (widget.isTimed) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        if (_remainingSeconds <= 1) {
-          setState(() => _remainingSeconds = 0);
-          _timer?.cancel();
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _submitQuiz();
-          });
-        } else {
-          setState(() => _remainingSeconds--);
-        }
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _quiz.startSession(widget.examId, timed: widget.isTimed);
+      _remainingSeconds = _exam.durationMinutes * 60;
+      setState(() => _isReady = true);
+      if (widget.isTimed) _startTimer();
+    });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_remainingSeconds <= 1) {
+        setState(() => _remainingSeconds = 0);
+        _timer?.cancel();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _submitQuiz();
+        });
+      } else {
+        setState(() => _remainingSeconds--);
+      }
+    });
   }
 
   @override
@@ -159,6 +166,9 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isReady) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final subject = _quiz.subjectById(_exam.subjectId);
     final selectedAnswer = _quiz.selectedAnswer;
     final isChecked = !widget.isTimed && _quiz.currentQuestionChecked;
@@ -318,9 +328,9 @@ class _QuizPlayScreenState extends ConsumerState<QuizPlayScreen> {
                       child: FilledButton.icon(
                         onPressed:
                             widget.isTimed ||
-                            _quiz.currentQuestionChecked ||
-                            _quiz.selectedAnswer != null ||
-                            _isLastQuestion
+                                _quiz.currentQuestionChecked ||
+                                _quiz.selectedAnswer != null ||
+                                _isLastQuestion
                             ? _onPrimaryAction
                             : null,
                         icon: Icon(

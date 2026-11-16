@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-
-import 'package:flutter_application_1/features/progress/data/models/stats_models.dart';
-import 'package:flutter_application_1/features/progress/domain/usecases/stats_usecases.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/progress/data/models/stats_models.dart';
 import 'package:flutter_application_1/features/progress/presentation/widgets/stats_widgets.dart';
+import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 
 class ErrorAnalysisScreen extends StatelessWidget {
   const ErrorAnalysisScreen({super.key});
 
-  int get _totalErrors => StatsService.quizErrorCategories.fold(
-    0,
-    (total, category) => total + category.count,
-  );
+  static const _colors = [0xFFD64545, 0xFFDFA841, 0xFF3B4A6B, 0xFF9AA7C0];
 
   void _openFlashcards(BuildContext context) {
     Navigator.of(context).pushNamed<void>('/flashcards');
@@ -20,6 +16,55 @@ class ErrorAnalysisScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: QuizService.instance,
+      builder: (context, _) => _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final results = QuizService.recentResults;
+    final totalWrongAnswers = results.fold<int>(
+      0,
+      (total, result) => total + result.wrongCount,
+    );
+    final scores = results
+        .map((result) => result.score <= 10 ? result.score * 10 : result.score)
+        .toList(growable: false);
+    final averageScore = scores.isEmpty
+        ? 0
+        : (scores.reduce((first, second) => first + second) / scores.length)
+              .round();
+    final wrongByTopic = <String, int>{};
+    for (final subject in QuizService.subjects) {
+      for (final question in QuizService.instance.wrongQuestionsForSubject(
+        subject.id,
+      )) {
+        final topic = question.topic.trim().isEmpty
+            ? question.chapterTitle
+            : question.topic;
+        wrongByTopic.update(
+          topic,
+          (count) => count + question.wrongCount,
+          ifAbsent: () => question.wrongCount,
+        );
+      }
+    }
+    final categories = wrongByTopic.entries.toList()
+      ..sort((first, second) => second.value.compareTo(first.value));
+    final categoryStats = [
+      for (var index = 0; index < categories.length; index++)
+        ReviewErrorStat(
+          label: categories[index].key,
+          count: categories[index].value,
+          colorValue: _colors[index % _colors.length],
+        ),
+    ];
+    final topicTotal = categoryStats.fold<int>(
+      0,
+      (sum, item) => sum + item.count,
+    );
+
     return AuthBackground(
       child: SafeArea(
         child: SingleChildScrollView(
@@ -35,14 +80,17 @@ class ErrorAnalysisScreen extends StatelessWidget {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Expanded(
-                    child: _ErrorMetric(label: 'Câu trả lời sai', value: '18'),
+                  Expanded(
+                    child: _ErrorMetric(
+                      label: 'Câu trả lời sai',
+                      value: '$totalWrongAnswers',
+                    ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _ErrorMetric(
                       label: 'Điểm quiz TB',
-                      value: '${StatsService.averageQuizScore}%',
+                      value: '$averageScore%',
                     ),
                   ),
                 ],
@@ -53,43 +101,58 @@ class ErrorAnalysisScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Nguyên nhân trả lời sai',
+                      'Chủ đề có câu trả lời sai',
                       style: AuthTextStyles.label,
                     ),
                     const SizedBox(height: 12),
-                    _ErrorDistribution(
-                      categories: StatsService.quizErrorCategories,
-                      total: _totalErrors,
-                    ),
-                    const SizedBox(height: 14),
-                    for (
-                      var index = 0;
-                      index < StatsService.quizErrorCategories.length;
-                      index++
-                    ) ...[
-                      if (index > 0) const SizedBox(height: 10),
-                      _ErrorLegendRow(
-                        category: StatsService.quizErrorCategories[index],
-                        total: _totalErrors,
+                    if (categoryStats.isEmpty)
+                      const Text('Chưa có câu trả lời sai để phân tích.')
+                    else ...[
+                      _ErrorDistribution(
+                        categories: categoryStats,
+                        total: topicTotal,
                       ),
+                      const SizedBox(height: 14),
+                      for (
+                        var index = 0;
+                        index < categoryStats.length;
+                        index++
+                      ) ...[
+                        if (index > 0) const SizedBox(height: 10),
+                        _ErrorLegendRow(
+                          category: categoryStats[index],
+                          total: topicTotal,
+                        ),
+                      ],
                     ],
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Lỗi thường gặp', style: AuthTextStyles.label),
+              const Text('Câu hỏi cần ôn lại', style: AuthTextStyles.label),
               const SizedBox(height: 10),
-              for (
-                var index = 0;
-                index < StatsService.commonQuizMistakes.length;
-                index++
-              ) ...[
-                if (index > 0) const SizedBox(height: 10),
-                _MistakeCard(
-                  index: index + 1,
-                  insight: StatsService.commonQuizMistakes[index],
-                ),
-              ],
+              if (categories.isEmpty)
+                const SummaryCard(
+                  child: Text(
+                    'Hoàn thành một bài quiz để xem nội dung cần ôn.',
+                  ),
+                )
+              else
+                for (
+                  var index = 0;
+                  index < categories.length && index < 8;
+                  index++
+                ) ...[
+                  if (index > 0) const SizedBox(height: 10),
+                  _MistakeCard(
+                    index: index + 1,
+                    insight: StudyInsight(
+                      title: categories[index].key,
+                      detail:
+                          'Ghi nhận ${categories[index].value} câu trả lời sai trong các quiz đã làm.',
+                    ),
+                  ),
+                ],
               const SizedBox(height: 16),
               SummaryCard(
                 padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),

@@ -1,19 +1,141 @@
 import 'package:flutter/material.dart';
-
-import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
+import 'package:flutter_application_1/features/ai_planner/presentation/providers/ai_planner_providers.dart';
 import 'package:flutter_application_1/features/ai_planner/presentation/widgets/ai_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AiSummaryScreen extends StatefulWidget {
-  const AiSummaryScreen({super.key, required this.data});
-  final AiSummaryData data;
+class AiSummaryScreen extends ConsumerStatefulWidget {
+  const AiSummaryScreen({super.key, required this.request});
+  final AiSummaryRequest request;
   @override
-  State<AiSummaryScreen> createState() => _AiSummaryScreenState();
+  ConsumerState<AiSummaryScreen> createState() => _AiSummaryScreenState();
 }
 
-class _AiSummaryScreenState extends State<AiSummaryScreen> {
+class _AiSummaryScreenState extends ConsumerState<AiSummaryScreen> {
   int _tab = 0;
+  bool _isLoading = true;
+  String? _error;
+  AiSummaryData? _summary;
+
+  @override
+  void initState() {
+    super.initState();
+    _runSummary();
+  }
+
+  Future<void> _runSummary() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final result = await ref
+        .read(aiSummaryUseCaseProvider)
+        .call(
+          title: widget.request.title,
+          documentId: widget.request.documentId,
+          fileName: widget.request.fileName,
+          contentType: widget.request.contentType,
+          bytes: widget.request.bytes,
+        );
+    if (!mounted) return;
+    result.match(
+      (failure) => setState(() {
+        _error = failure.message;
+        _isLoading = false;
+      }),
+      (summary) => setState(() {
+        _summary = summary;
+        _isLoading = false;
+      }),
+    );
+  }
+
+  Future<void> _showHistory() async {
+    final result = await ref.read(aiSummaryHistoryUseCaseProvider).call();
+    if (!mounted) return;
+    String? error;
+    List<AiSummaryData> history = const [];
+    result.match(
+      (failure) => error = failure.message,
+      (items) => history = items,
+    );
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error!)));
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * .7,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xFFF8F4EA),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(18),
+                child: Text(
+                  'Lịch sử tóm tắt',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: aiNavy,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: history.isEmpty
+                    ? const Center(child: Text('Bạn chưa có bản tóm tắt nào.'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                        itemCount: history.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final item = history[index];
+                          return ListTile(
+                            tileColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              item.content,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _summary = item;
+                                _error = null;
+                                _isLoading = false;
+                                _tab = 0;
+                              });
+                              Navigator.of(sheetContext).pop();
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _card({
     required Widget child,
@@ -53,7 +175,7 @@ class _AiSummaryScreenState extends State<AiSummaryScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.data.title,
+                                _summary?.title ?? widget.request.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -63,8 +185,10 @@ class _AiSummaryScreenState extends State<AiSummaryScreen> {
                                   color: aiNavy,
                                 ),
                               ),
-                              const Text(
-                                '48 trang → 1 trang tóm tắt',
+                              Text(
+                                _summary == null
+                                    ? 'Đang tạo tóm tắt từ nội dung thật'
+                                    : 'Đã tạo và lưu vào lịch sử',
                                 style: TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 10,
@@ -84,118 +208,110 @@ class _AiSummaryScreenState extends State<AiSummaryScreen> {
                     onChanged: (value) => setState(() => _tab = value),
                   ),
                   const SizedBox(height: 17),
-                  if (_tab == 0) ...[
+                  if (_isLoading) ...[
+                    _card(
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 30),
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: aiNavy),
+                            SizedBox(height: 14),
+                            Text('AI đang đọc tài liệu và tạo tóm tắt...'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (_error != null) ...[
                     _card(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Ý chính',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: aiNavy,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          _bullet(
-                            'Định lý Rolle và định lý giá trị trung bình là nền tảng của chương.',
-                          ),
-                          _bullet(
-                            'Điều kiện: liên tục trên [a, b], khả vi trên (a, b).',
-                          ),
-                          _bullet(
-                            'Ứng dụng: chứng minh bất đẳng thức, đánh giá nghiệm phương trình.',
-                          ),
-                          _bullet(
-                            'Hay gặp trong đề thi: chứng minh tồn tại c thuộc (a, b).',
+                          Text(_error!, textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: _runSummary,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Thử lại'),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                  ] else if (_tab == 0 || _tab == 1) ...[
                     _card(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Quan trọng',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: aiNavy,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 7,
-                            runSpacing: 7,
+                          Row(
                             children: [
-                              'Rolle',
-                              'Lagrange',
-                              'Khả vi',
-                              'Liên tục',
-                              'Cực trị',
-                            ].map((word) => _tag(word)).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _card(
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Tóm tắt này hữu ích?',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: aiNavy,
+                              Expanded(
+                                child: Text(
+                                  _tab == 0
+                                      ? 'Tóm tắt nội dung'
+                                      : 'Nội dung chi tiết',
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: aiNavy,
+                                  ),
+                                ),
                               ),
+                              IconButton(
+                                tooltip: 'Sao chép',
+                                onPressed: _summary == null
+                                    ? null
+                                    : () async {
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
+                                        );
+                                        await Clipboard.setData(
+                                          ClipboardData(
+                                            text: _summary!.content,
+                                          ),
+                                        );
+                                        if (mounted) {
+                                          messenger.showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Đã sao chép tóm tắt.',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                icon: const Icon(Icons.copy, size: 18),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SelectableText(
+                            _summary?.content ?? '',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                              height: 1.55,
+                              color: aiNavy,
                             ),
                           ),
-                          _ratingButton(Icons.thumb_up_alt_outlined),
-                          const SizedBox(width: 6),
-                          _ratingButton(Icons.thumb_down_alt_outlined),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
-                      ),
                     ),
-                  ] else if (_tab == 1) ...[
-                    _detailCard(
-                      1,
-                      'Định lý Rolle',
-                      'Nếu f liên tục trên [a, b], khả vi trên (a, b) và f(a) = f(b) thì tồn tại c ∈ (a, b) sao cho:',
-                      'f′(c) = 0',
-                      'Ý nghĩa: tiếp tuyến tại c nằm ngang.',
-                      'Tr. 3–5',
-                    ),
-                    const SizedBox(height: 16),
-                    _detailCard(
-                      2,
-                      'Định lý Lagrange',
-                      'Bổ đề của định lý Rolle cho ta:',
-                      'f′(c) = (f(b) − f(a)) / (b − a)',
-                      'Ý nghĩa: có điểm mà tốc độ tiếp tuyến bằng độ dốc trung bình của cả đoạn.',
-                      'Tr. 6–9',
-                    ),
-                    const SizedBox(height: 14),
-                    _collapsedDetail(3, 'Ứng dụng', 'Tr. 10–13'),
-                    const SizedBox(height: 12),
-                    _collapsedDetail(4, 'Bài tập thường gặp', 'Tr. 14–20'),
                   ] else ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: const MindMapView(),
+                    _card(
+                      child: const Text(
+                        'Sơ đồ tư duy chưa được tạo cho bản tóm tắt này.',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
+                  if (!_isLoading && _error == null && _summary != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _showHistory,
+                        icon: const Icon(Icons.history),
+                        label: const Text('Lịch sử tóm tắt'),
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   PrimaryButton(
                     label: 'Tạo flashcard',
@@ -215,205 +331,5 @@ class _AiSummaryScreenState extends State<AiSummaryScreen> {
         ],
       ),
     ),
-  );
-
-  Widget _bullet(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
-          child: Icon(Icons.circle, size: 7, color: Color(0xFFC9A227)),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              height: 17 / 12,
-              color: aiNavy,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _tag(String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEFE8D8),
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: aiNavy,
-      ),
-    ),
-  );
-
-  Widget _ratingButton(IconData icon) => Container(
-    width: 34,
-    height: 34,
-    decoration: const BoxDecoration(
-      color: Color(0xFFEFE8D8),
-      shape: BoxShape.circle,
-    ),
-    child: Icon(icon, size: 17, color: Colors.black),
-  );
-
-  Widget _detailCard(
-    int number,
-    String title,
-    String intro,
-    String formula,
-    String note,
-    String pages,
-  ) => _card(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 27,
-              height: 27,
-              decoration: const BoxDecoration(
-                color: aiNavy,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '$number',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: aiNavy,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFE8D8),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                pages,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: aiNavy,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 7),
-        Text(
-          intro,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 11,
-            height: 15 / 11,
-            color: aiNavy,
-          ),
-        ),
-        const SizedBox(height: 9),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFE8D8),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Text(
-            formula,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: aiNavy,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          note,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 10,
-            height: 15 / 10,
-            color: Color(0xFF8A93AA),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _collapsedDetail(int number, String title, String pages) => _card(
-    child: Row(
-      children: [
-        CircleAvatar(
-          radius: 13,
-          backgroundColor: const Color(0xFFEFE8D8),
-          child: Text(
-            '$number',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: aiNavy,
-            ),
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: aiNavy,
-            ),
-          ),
-        ),
-        Text(
-          pages,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: aiNavy,
-          ),
-        ),
-        const SizedBox(width: 7),
-        const Icon(Icons.keyboard_arrow_down, color: Color(0xFF8A93AA)),
-      ],
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
   );
 }

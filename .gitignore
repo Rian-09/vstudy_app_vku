@@ -48,3 +48,7 @@ app.*.map.json
 .widget_preview/
 .vscode/mcp.json
 supabase/functions/.env
+
+node_modules/
+android/build/
+supabase/.temp/

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-
-import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
-import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
-import 'package:flutter_application_1/features/ai_planner/domain/usecases/ai_planner_usecases.dart';
-import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/presentation/main_shell.dart';
+import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
+import 'package:flutter_application_1/features/ai_planner/domain/usecases/ai_planner_usecases.dart';
+import 'package:flutter_application_1/features/ai_planner/presentation/widgets/ai_widgets.dart';
+import 'package:flutter_application_1/features/quiz/data/models/quiz_models.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_chart_screen.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_play_screen.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_result_screen.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_review_screen.dart';
+
 import 'ai_chat_screen.dart';
 import 'ai_create_test_screen.dart';
 import 'ai_pick_documents_screen.dart';
 import 'ai_roadmap_screen.dart';
 import 'ai_summary_screen.dart';
-import 'package:flutter_application_1/features/ai_planner/presentation/widgets/ai_widgets.dart';
 
 class AiNavigationHost extends StatelessWidget {
   const AiNavigationHost({super.key, this.shellArgs});
@@ -32,7 +32,7 @@ class AiNavigationHost extends StatelessWidget {
           '/chat' => const AiChatScreen(),
           '/pick-documents' => const AiPickDocumentsScreen(),
           '/summary' => AiSummaryScreen(
-            data: settings.arguments as AiSummaryData,
+            request: settings.arguments as AiSummaryRequest,
           ),
           '/create-test' => const AiCreateTestScreen(),
           '/roadmap' => const AiRoadmapScreen(),

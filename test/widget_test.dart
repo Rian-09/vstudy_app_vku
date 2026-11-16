@@ -6,36 +6,36 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/main.dart';
-import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
-import 'package:flutter_application_1/features/documents/data/models/document.dart';
-import 'package:flutter_application_1/features/schedule/presentation/screens/calendar_screen.dart';
-import 'package:flutter_application_1/features/schedule/presentation/screens/event_detail_screen.dart';
-import 'package:flutter_application_1/features/schedule/presentation/screens/event_form_screen.dart';
-import 'package:flutter_application_1/features/documents/presentation/screens/document_viewer_screen.dart';
-import 'package:flutter_application_1/features/documents/presentation/screens/documents_screen.dart';
-import 'package:flutter_application_1/features/documents/presentation/screens/library_screen.dart';
-import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
-import 'package:flutter_application_1/features/documents/data/datasources/document_storage_datasource.dart';
-import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
-import 'package:flutter_application_1/core/presentation/main_shell.dart';
-import 'package:flutter_application_1/features/auth/presentation/screens/profile/edit_profile_screen.dart';
-import 'package:flutter_application_1/features/auth/presentation/screens/profile/profile_screen.dart';
-import 'package:flutter_application_1/features/quiz/presentation/screens/exam_detail_screen.dart';
-import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_home_screen.dart';
-import 'package:flutter_application_1/features/quiz/presentation/screens/subject_quiz_screen.dart';
-import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_play_screen.dart';
-import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
-import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
-import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
-import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:flutter_application_1/core/error/failure.dart';
+import 'package:flutter_application_1/core/presentation/main_shell.dart';
+import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/features/auth/domain/entities/user_profile.dart';
 import 'package:flutter_application_1/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
+import 'package:flutter_application_1/features/auth/presentation/screens/profile/edit_profile_screen.dart';
+import 'package:flutter_application_1/features/auth/presentation/screens/profile/profile_screen.dart';
+import 'package:flutter_application_1/features/documents/data/datasources/document_storage_datasource.dart';
+import 'package:flutter_application_1/features/documents/data/models/document.dart';
+import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
+import 'package:flutter_application_1/features/documents/presentation/screens/document_viewer_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/screens/documents_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/screens/library_screen.dart';
+import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/exam_detail_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_home_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_play_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/subject_quiz_screen.dart';
+import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
+import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/calendar_screen.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/event_detail_screen.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/event_form_screen.dart';
+import 'package:flutter_application_1/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 
 void main() {
   test('demo and registered accounts authenticate with normalized emails', () {
@@ -203,9 +203,13 @@ void main() {
   testWidgets('document filters switch in place and library back returns', (
     WidgetTester tester,
   ) async {
+    final documentRepository = DocumentRepository.forTesting(
+      initialDocuments: _documentFixtures(),
+    );
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          documentRepositoryProvider.overrideWith((ref) => documentRepository),
           documentStorageDataSourceProvider.overrideWith(
             (ref) => DocumentStorageDataSource.localOnly(
               database: ref.read(documentsDatabaseProvider),
@@ -259,10 +263,14 @@ void main() {
   testWidgets('viewer download reports missing server file', (
     WidgetTester tester,
   ) async {
-    final document = DocumentRepository.instance.documents.first;
+    final documentRepository = DocumentRepository.forTesting(
+      initialDocuments: _documentFixtures(),
+    );
+    final document = documentRepository.documents.first;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          documentRepositoryProvider.overrideWith((ref) => documentRepository),
           documentStorageDataSourceProvider.overrideWith(
             (ref) => DocumentStorageDataSource.localOnly(
               database: ref.read(documentsDatabaseProvider),
@@ -295,10 +303,7 @@ void main() {
     }
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(
-      DocumentRepository.instance.findById(document.id)?.isDownloaded,
-      isFalse,
-    );
+    expect(documentRepository.findById(document.id)?.isDownloaded, isFalse);
     expect(
       find.text('Tài liệu này chưa có file PDF trên máy chủ.'),
       findsOneWidget,
@@ -434,7 +439,7 @@ void main() {
     await tester.ensureVisible(find.text('Thống kê quiz'));
     await tester.tap(find.text('Thống kê quiz'));
     await tester.pumpAndSettle();
-    expect(find.text('Nguyên nhân trả lời sai'), findsOneWidget);
+    expect(find.text('Chủ đề có câu trả lời sai'), findsOneWidget);
     await tester.ensureVisible(find.text('Xem thống kê ôn tập flashcard'));
     await tester.tap(find.text('Xem thống kê ôn tập flashcard'));
     await tester.pumpAndSettle();
@@ -500,7 +505,8 @@ void main() {
           home: const MainShell(initialIndex: 0),
           routes: {
             '/calendar/event-form': (context) => EventFormScreen(
-              event: ModalRoute.of(context)?.settings.arguments as CalendarEvent?,
+              event:
+                  ModalRoute.of(context)?.settings.arguments as CalendarEvent?,
             ),
             '/calendar/event-detail': (context) => EventDetailScreen(
               eventId: ModalRoute.of(context)!.settings.arguments as String,
@@ -575,10 +581,59 @@ void main() {
   });
 }
 
+List<StudyDocument> _documentFixtures() => const [
+  StudyDocument(
+    id: 'course-doc',
+    title: 'Slide bài giảng Chương 2 - Lịch sử Đảng',
+    subject: 'Lịch sử Đảng',
+    author: 'V-Study',
+    type: 'Slide',
+    size: '43MB',
+    pages: 72,
+    thumbnail: 'assets/images/documents/slide_history.png',
+    isDownloaded: false,
+    isSaved: true,
+    progress: .8,
+    category: DocumentCategory.course,
+    downloads: 0,
+    updatedAt: '',
+  ),
+  StudyDocument(
+    id: 'exam-doc',
+    title: 'Đề thi chuẩn kèm đáp án chi tiết môn Triết học Mác - Lênin',
+    subject: 'Triết học Mác-Lênin',
+    author: 'V-Study',
+    type: 'Đề thi',
+    size: '3MB',
+    pages: 57,
+    thumbnail: 'assets/images/documents/exam_history.png',
+    isDownloaded: false,
+    isSaved: false,
+    progress: 0,
+    category: DocumentCategory.exam,
+    downloads: 0,
+    updatedAt: '',
+  ),
+  StudyDocument(
+    id: 'network-doc',
+    title: 'Slide chương Mạng máy tính',
+    subject: 'Mạng máy tính',
+    author: 'V-Study',
+    type: 'Slide',
+    size: '6MB',
+    pages: 30,
+    thumbnail: 'assets/images/documents/network_course.png',
+    isDownloaded: false,
+    isSaved: false,
+    progress: 0,
+    category: DocumentCategory.course,
+    downloads: 0,
+    updatedAt: '',
+  ),
+];
+
 Widget _authTestScope({required Widget child}) => ProviderScope(
-  overrides: [
-    authRepositoryProvider.overrideWithValue(_TestAuthRepository()),
-  ],
+  overrides: [authRepositoryProvider.overrideWithValue(_TestAuthRepository())],
   child: child,
 );
 
@@ -628,12 +683,17 @@ class _TestAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Result<UserProfile>> login({required String email, required String password}) async =>
-      const Left(AuthFailure('Không dùng trong test này.'));
+  Future<Result<UserProfile>> login({
+    required String email,
+    required String password,
+  }) async => const Left(AuthFailure('Không dùng trong test này.'));
 
   @override
-  Future<Result<void>> register({required String fullName, required String email, required String password}) async =>
-      const Left(AuthFailure('Không dùng trong test này.'));
+  Future<Result<void>> register({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async => const Left(AuthFailure('Không dùng trong test này.'));
 
   @override
   Future<Result<void>> sendPasswordReset(String email) async =>

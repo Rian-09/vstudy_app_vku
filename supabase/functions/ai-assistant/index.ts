@@ -40,7 +40,7 @@ Deno.serve(async (request) => {
   if (!apiKey) return json({ error: 'AI service is not configured.' }, 503);
 
   const prompt = [
-    'Bạn là trợ lý học tập của StudyFlow cho sinh viên VKU. Trả lời bằng tiếng Việt, rõ ràng và trung thực.',
+    'Bạn là trợ lý học tập của V-STUDY cho sinh viên VKU. Trả lời bằng tiếng Việt, rõ ràng và trung thực.',
     context ? `Ngữ cảnh học tập:\n${context}` : '',
     `Câu hỏi của sinh viên:\n${question}`,
   ].filter(Boolean).join('\n\n');
@@ -58,7 +58,7 @@ Deno.serve(async (request) => {
       },
     );
     const payload = await result.json();
-    if (!result.ok) return json({ error: 'Gemini request failed.' }, 502);
+    if (!result.ok) return json({ error: `Gemini request failed (HTTP ${result.status}).` }, 502);
     const answer = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (typeof answer !== 'string' || !answer.trim()) return json({ error: 'Gemini returned no answer.' }, 502);
     return json({ answer: answer.trim(), model });

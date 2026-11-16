@@ -1,6 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:flutter_application_1/features/ai_planner/domain/services/ocr_schedule_parser.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const parser = OcrScheduleParser();
@@ -24,7 +23,22 @@ void main() {
     expect(draft.endsAt, DateTime(2026, 12, 24, 1));
   });
 
-  test('ignores lines without both date and time range', () {
-    expect(parser.parse('Triết học\n15/10/2026').isEmpty, isTrue);
+  test(
+    'keeps a recognized date when the time is missing for later editing',
+    () {
+      final draft = parser.parse('Triết học\n15/10/2026').single;
+
+      expect(draft.startsAt, DateTime(2026, 10, 15, 9));
+      expect(draft.endsAt, DateTime(2026, 10, 15, 10));
+      expect(draft.timeDetected, isFalse);
+    },
+  );
+
+  test('finds a time range on a neighboring OCR line', () {
+    final draft = parser.parse('15/10/2026\n08:30 - 10:00').single;
+
+    expect(draft.startsAt, DateTime(2026, 10, 15, 8, 30));
+    expect(draft.endsAt, DateTime(2026, 10, 15, 10));
+    expect(draft.timeDetected, isTrue);
   });
 }

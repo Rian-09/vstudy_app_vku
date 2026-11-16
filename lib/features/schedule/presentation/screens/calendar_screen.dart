@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-
-import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/ai_planner/data/datasources/mlkit_ocr_datasource.dart';
 import 'package:flutter_application_1/features/ai_planner/domain/entities/ocr_schedule_draft.dart';
 import 'package:flutter_application_1/features/ai_planner/domain/services/ocr_schedule_parser.dart';
+import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
+import 'package:flutter_application_1/features/schedule/presentation/screens/event_form_screen.dart';
 import 'package:flutter_application_1/features/schedule/presentation/widgets/calendar_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 const _calendarNavy = Color(0xFF1F2A44);
 
@@ -75,81 +75,63 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       if (!mounted) return;
       final drafts = const OcrScheduleParser().parse(text);
       if (drafts.isEmpty) {
-        _showMessage('Không tìm thấy dòng lịch có ngày và giờ rõ ràng.');
+        _showMessage(
+          'Không nhận diện được ngày trong ảnh. Bạn có thể thêm lịch thủ công.',
+        );
         return;
       }
-      final shouldSave = await _confirmOcrDrafts(drafts);
-      if (shouldSave != true || !mounted) return;
-      final controller = ref.read(scheduleControllerProvider.notifier);
+      var savedCount = 0;
       for (var index = 0; index < drafts.length; index++) {
-        final draft = drafts[index];
-        await controller.add(_toCalendarEvent(draft, index));
+        if (!mounted) return;
+        final saved = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => EventFormScreen(
+              event: _toCalendarEvent(drafts[index], index),
+              createFromDraft: true,
+            ),
+          ),
+        );
+        if (saved == true) {
+          savedCount++;
+        }
       }
-      if (mounted) _showMessage('Đã thêm ${drafts.length} lịch từ ảnh.');
+      if (mounted && savedCount > 0) {
+        _showMessage('Đã thêm $savedCount lịch từ ảnh.');
+      }
     } on UnsupportedError catch (error) {
-      if (mounted) _showMessage(error.message ?? 'OCR chưa hỗ trợ thiết bị này.');
+      if (mounted) {
+        _showMessage(error.message ?? 'OCR chưa hỗ trợ thiết bị này.');
+      }
     } catch (error) {
       if (mounted) _showMessage('Không thể đọc ảnh: $error');
     }
   }
 
-  Future<bool?> _confirmOcrDrafts(List<OcrScheduleDraft> drafts) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận lịch từ ảnh'),
-        content: SizedBox(
-          width: 360,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: drafts.length,
-            itemBuilder: (context, index) {
-              final draft = drafts[index];
-              return ListTile(
-                dense: true,
-                title: Text(draft.title),
-                subtitle: Text(
-                  '${_formatDateTime(draft.startsAt)} - ${_formatTime(draft.endsAt)}'
-                  '${draft.location.isEmpty ? '' : ' · ${draft.location}'}',
-                ),
-              );
-            },
-          ),
+  CalendarEvent _toCalendarEvent(OcrScheduleDraft draft, int index) =>
+      CalendarEvent(
+        id: 'ocr-${DateTime.now().microsecondsSinceEpoch}-$index',
+        title: draft.title,
+        subject: draft.subject,
+        type: CalendarEventType.classSession,
+        format: CalendarEventFormat.inClass,
+        date: DateTime(
+          draft.startsAt.year,
+          draft.startsAt.month,
+          draft.startsAt.day,
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Thêm lịch')),
-        ],
-      ),
-    );
-  }
-
-  CalendarEvent _toCalendarEvent(OcrScheduleDraft draft, int index) => CalendarEvent(
-    id: 'ocr-${DateTime.now().microsecondsSinceEpoch}-$index',
-    title: draft.title,
-    subject: draft.subject,
-    type: CalendarEventType.classSession,
-    format: CalendarEventFormat.inClass,
-    date: DateTime(draft.startsAt.year, draft.startsAt.month, draft.startsAt.day),
-    startTime: TimeOfDay.fromDateTime(draft.startsAt),
-    endTime: TimeOfDay.fromDateTime(draft.endsAt),
-    location: draft.location,
-    note: draft.note,
-    repeat: 'Không lặp lại',
-    reminder: 'Không nhắc',
-    checklist: const [],
-  );
+        startTime: TimeOfDay.fromDateTime(draft.startsAt),
+        endTime: TimeOfDay.fromDateTime(draft.endsAt),
+        location: draft.location,
+        note: draft.note,
+        repeat: 'Không lặp lại',
+        reminder: 'Không nhắc',
+        checklist: const [],
+      );
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
-
-  String _formatDateTime(DateTime date) =>
-      '${date.day.toString().padLeft(2, '0')}/'
-      '${date.month.toString().padLeft(2, '0')} ${_formatTime(date)}';
-
-  String _formatTime(DateTime date) =>
-      '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -165,17 +147,36 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
           ),
           data: (events) {
-            final dayEvents = events.where((event) => _sameDate(event.date, _selectedDate)).toList()
-              ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+            final dayEvents =
+                events
+                    .where((event) => _sameDate(event.date, _selectedDate))
+                    .toList()
+                  ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
             final weekEnd = _weekStart.add(const Duration(days: 6));
-            final weekEvents = events.where((event) =>
-                !_dateOnly(event.date).isBefore(_dateOnly(_weekStart)) &&
-                !_dateOnly(event.date).isAfter(_dateOnly(weekEnd))).toList();
-            final monthStart = DateTime(_selectedDate.year, _selectedDate.month, 1);
-            final monthEnd = DateTime(_selectedDate.year, _selectedDate.month + 1, 0);
-            final monthEvents = events.where((event) =>
-                !_dateOnly(event.date).isBefore(monthStart) &&
-                !_dateOnly(event.date).isAfter(monthEnd)).toList();
+            final weekEvents = events
+                .where(
+                  (event) =>
+                      !_dateOnly(event.date).isBefore(_dateOnly(_weekStart)) &&
+                      !_dateOnly(event.date).isAfter(_dateOnly(weekEnd)),
+                )
+                .toList();
+            final monthStart = DateTime(
+              _selectedDate.year,
+              _selectedDate.month,
+              1,
+            );
+            final monthEnd = DateTime(
+              _selectedDate.year,
+              _selectedDate.month + 1,
+              0,
+            );
+            final monthEvents = events
+                .where(
+                  (event) =>
+                      !_dateOnly(event.date).isBefore(monthStart) &&
+                      !_dateOnly(event.date).isAfter(monthEnd),
+                )
+                .toList();
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 80),
               child: Column(
@@ -225,24 +226,46 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             onPressed: () => _movePeriod(-1),
                             tooltip: 'Ngày trước',
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-                            icon: const Icon(Icons.chevron_left, color: _calendarNavy, size: 20),
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
+                            icon: const Icon(
+                              Icons.chevron_left,
+                              color: _calendarNavy,
+                              size: 20,
+                            ),
                           ),
                           IconButton(
                             onPressed: () => _movePeriod(1),
                             tooltip: 'Ngày sau',
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-                            icon: const Icon(Icons.chevron_right, color: _calendarNavy, size: 20),
+                            constraints: const BoxConstraints.tightFor(
+                              width: 28,
+                              height: 28,
+                            ),
+                            icon: const Icon(
+                              Icons.chevron_right,
+                              color: _calendarNavy,
+                              size: 20,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    DayTimeline(events: dayEvents, onEventTap: _openEvent, onAddTap: _openAddForm),
+                    DayTimeline(
+                      events: dayEvents,
+                      onEventTap: _openEvent,
+                      onAddTap: _openAddForm,
+                    ),
                   ] else if (_mode == CalendarViewMode.week) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 7),
-                      child: _PeriodNavigator(label: _periodLabel, onPrevious: () => _movePeriod(-1), onNext: () => _movePeriod(1)),
+                      child: _PeriodNavigator(
+                        label: _periodLabel,
+                        onPrevious: () => _movePeriod(-1),
+                        onNext: () => _movePeriod(1),
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -251,13 +274,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         selectedDate: _selectedDate,
                         events: weekEvents,
                         onEventTap: _openEvent,
-                        onDaySelected: (date) => setState(() => _selectedDate = date),
+                        onDaySelected: (date) =>
+                            setState(() => _selectedDate = date),
                       ),
                     ),
                   ] else ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 15),
-                      child: _PeriodNavigator(label: _periodLabel, onPrevious: () => _movePeriod(-1), onNext: () => _movePeriod(1)),
+                      child: _PeriodNavigator(
+                        label: _periodLabel,
+                        onPrevious: () => _movePeriod(-1),
+                        onNext: () => _movePeriod(1),
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -273,7 +301,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 15, 20, 8),
-                      child: _SelectedDayEvents(date: _selectedDate, events: dayEvents, onEventTap: _openEvent),
+                      child: _SelectedDayEvents(
+                        date: _selectedDate,
+                        events: dayEvents,
+                        onEventTap: _openEvent,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -288,10 +320,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  static DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+  static DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
 
   static bool _sameDate(DateTime first, DateTime second) =>
-      first.year == second.year && first.month == second.month && first.day == second.day;
+      first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
 }
 
 /*
@@ -506,7 +541,10 @@ class _CalendarTop extends StatelessWidget {
                             backgroundColor: Colors.white,
                             foregroundColor: _calendarNavy,
                           ),
-                          icon: const Icon(Icons.document_scanner_outlined, size: 20),
+                          icon: const Icon(
+                            Icons.document_scanner_outlined,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 6),
                         SizedBox(
@@ -518,7 +556,9 @@ class _CalendarTop extends StatelessWidget {
                             style: FilledButton.styleFrom(
                               backgroundColor: _calendarNavy,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 13),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 13,
+                              ),
                               shape: const StadiumBorder(),
                               textStyle: const TextStyle(
                                 fontFamily: 'Inter',
@@ -529,7 +569,7 @@ class _CalendarTop extends StatelessWidget {
                           ),
                         ),
                       ],
-                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 9),

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
+import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
 import 'package:flutter_application_1/features/schedule/presentation/widgets/calendar_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const _formNavy = Color(0xFF1F2A44);
 
 class EventFormScreen extends ConsumerStatefulWidget {
-  const EventFormScreen({super.key, this.event});
+  const EventFormScreen({super.key, this.event, this.createFromDraft = false});
 
   final CalendarEvent? event;
+  final bool createFromDraft;
 
   @override
   ConsumerState<EventFormScreen> createState() => _EventFormScreenState();
@@ -36,7 +36,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   bool _isDirty = false;
   bool _submitting = false;
 
-  bool get _isEditing => widget.event != null;
+  bool get _isEditing => widget.event != null && !widget.createFromDraft;
 
   bool get _isValid {
     final titleValid = _titleController.text.trim().isNotEmpty;
@@ -175,9 +175,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     if (!success || !mounted) {
       if (mounted) {
         setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu lịch.')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Không thể lưu lịch.')));
       }
       return;
     }

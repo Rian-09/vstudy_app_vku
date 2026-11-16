@@ -17,7 +17,12 @@ final documentRepositoryProvider = Provider<DocumentRepository>(
 
 final documentUseCasesProvider = Provider<DocumentUseCases>((ref) {
   final repository = ref.watch(documentRepositoryProvider);
-  return DocumentUseCases(DocumentRepositoryImpl(repository));
+  return DocumentUseCases(
+    DocumentRepositoryImpl(
+      repository,
+      ref.watch(documentStorageDataSourceProvider),
+    ),
+  );
 });
 
 final documentsDatabaseProvider = Provider<DocumentsDatabase>((ref) {

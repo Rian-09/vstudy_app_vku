@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/quiz_models.dart';
@@ -127,35 +128,7 @@ class QuizService extends ChangeNotifier {
     ),
   ];
 
-  static final recentResults = [
-    QuizResult(
-      examId: 'law-exam-2',
-      correctCount: 9,
-      wrongCount: 1,
-      skippedCount: 0,
-      durationMinutes: 18,
-      score: 9,
-      completedAt: DateTime(2026, 11, 3),
-    ),
-    QuizResult(
-      examId: 'law-exam-1',
-      correctCount: 4,
-      wrongCount: 6,
-      skippedCount: 0,
-      durationMinutes: 25,
-      score: 4,
-      completedAt: DateTime(2026, 11, 4),
-    ),
-    QuizResult(
-      examId: 'philosophy-exam-1',
-      correctCount: 9,
-      wrongCount: 1,
-      skippedCount: 0,
-      durationMinutes: 21,
-      score: 9,
-      completedAt: DateTime(2026, 11, 2),
-    ),
-  ];
+  static final recentResults = <QuizResult>[];
 
   Future<void> hydrateFromSupabase(SupabaseClient client) async {
     final subjectRows = await client
@@ -183,8 +156,11 @@ class QuizService extends ChangeNotifier {
       final row = Map<String, dynamic>.from(raw);
       final options = optionsByQuestion[row['id'] as String] ?? const [];
       final orderedOptions = [...options]
-        ..sort((first, second) =>
-            (first['option_index'] as int).compareTo(second['option_index'] as int));
+        ..sort(
+          (first, second) => (first['option_index'] as int).compareTo(
+            second['option_index'] as int,
+          ),
+        );
       if (orderedOptions.length != 4) continue;
       final question = Question(
         id: row['id'] as String,
@@ -200,7 +176,9 @@ class QuizService extends ChangeNotifier {
         ),
         explanation: row['explanation'] as String? ?? '',
       );
-      questionsByQuiz.putIfAbsent(row['quiz_id'] as String, () => []).add(question);
+      questionsByQuiz
+          .putIfAbsent(row['quiz_id'] as String, () => [])
+          .add(question);
     }
 
     final quizRowsBySubject = <String, List<Map<String, dynamic>>>{};
@@ -265,14 +243,65 @@ class QuizService extends ChangeNotifier {
         .select()
         .eq('owner_id', userId)
         .order('completed_at', ascending: false);
+    final attemptRows = (rows as List)
+        .map((raw) => Map<String, dynamic>.from(raw))
+        .toList(growable: false);
+    final attemptIds = attemptRows
+        .map((row) => row['id'] as String?)
+        .whereType<String>()
+        .toList(growable: false);
+    final answerRows = attemptIds.isEmpty
+        ? const <dynamic>[]
+        : await client
+              .from('attempt_answers')
+              .select(
+                'attempt_id, question_id, selected_option_index, is_correct',
+              )
+              .inFilter('attempt_id', attemptIds);
+    final answersByAttempt = <String, Map<String, Map<String, dynamic>>>{};
+    for (final raw in answerRows) {
+      final answer = Map<String, dynamic>.from(raw);
+      answersByAttempt.putIfAbsent(
+        answer['attempt_id'] as String,
+        () => {},
+      )[answer['question_id'] as String] = answer;
+    }
     final remoteResults = <QuizResult>[];
-    for (final raw in rows as List) {
-      final row = Map<String, dynamic>.from(raw);
+    _savedWrongQuestions.clear();
+    for (final row in attemptRows) {
       final completedAt = row['completed_at'] as String?;
       if (completedAt == null) continue;
+      final examId = row['quiz_id'] as String;
+      final exam = examById(examId);
+      final storedAnswers = answersByAttempt[row['id'] as String?] ?? const {};
+      final orderedAnswers =
+          exam?.questions
+              .map((question) => storedAnswers[question.id])
+              .toList(growable: false) ??
+          const <Map<String, dynamic>?>[];
+      final answerIndexes = orderedAnswers
+          .map((answer) => (answer?['selected_option_index'] as num?)?.toInt())
+          .toList(growable: false);
+      if (exam != null) {
+        final subjectWrong = _savedWrongQuestions.putIfAbsent(
+          exam.subjectId,
+          () => <String, Question>{},
+        );
+        for (var index = 0; index < exam.questions.length; index++) {
+          final question = exam.questions[index];
+          final answer = answerIndexes[index];
+          if (answer != null && answer != question.correctIndex) {
+            final previous = subjectWrong[question.id]?.wrongCount ?? 0;
+            subjectWrong[question.id] = question.copyWith(
+              previousAnswerIndex: answer,
+              wrongCount: previous + 1,
+            );
+          }
+        }
+      }
       remoteResults.add(
         QuizResult(
-          examId: row['quiz_id'] as String,
+          examId: examId,
           correctCount: (row['correct_count'] as num?)?.toInt() ?? 0,
           wrongCount: (row['wrong_count'] as num?)?.toInt() ?? 0,
           skippedCount: (row['skipped_count'] as num?)?.toInt() ?? 0,
@@ -281,6 +310,7 @@ class QuizService extends ChangeNotifier {
           durationSeconds: (row['duration_seconds'] as num?)?.toInt() ?? 0,
           score: (row['score'] as num? ?? 0).toDouble(),
           completedAt: DateTime.parse(completedAt).toLocal(),
+          answers: answerIndexes,
         ),
       );
     }

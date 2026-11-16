@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 
-import 'package:flutter_application_1/features/documents/data/models/document.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
-import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_application_1/features/documents/data/models/document.dart';
 import 'package:flutter_application_1/features/documents/presentation/providers/document_providers.dart';
+import 'package:flutter_application_1/features/documents/presentation/widgets/document_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const _documentsGold = Color(0xFFDFA841);
 const _documentsNavy = Color(0xFF1E2A4A);
@@ -25,26 +27,24 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   int _selectedTab = 0;
   int _selectedSubject = 0;
   String _query = '';
+  bool _isUploading = false;
 
-  List<String> get _subjects => _selectedTab == 0
-      ? const [
-          'Tất cả (299)',
-          'Mạng máy tính',
-          'Triết học Mác-Lênin',
-          'Pháp luật đại cương',
-        ]
-      : const [
-          'Tất cả (299)',
-          'Mạng máy tính',
-          'Triết học Mác-Lênin',
-          'Pháp luật đại cương',
-        ];
+  List<String> _subjects(List<StudyDocument> allDocuments) {
+    final documents = allDocuments
+        .where((doc) => doc.category == _categoryForTab)
+        .toList();
+    final names = documents.map((doc) => doc.subject).toSet().toList()..sort();
+    return ['Tất cả (${documents.length})', ...names];
+  }
+
+  DocumentCategory get _categoryForTab =>
+      _selectedTab == 0 ? DocumentCategory.course : DocumentCategory.exam;
 
   List<StudyDocument> _filteredDocuments(List<StudyDocument> allDocuments) {
-    final category = _selectedTab == 0
-        ? DocumentCategory.course
-        : DocumentCategory.exam;
-    final subject = _selectedSubject == 0 ? null : _subjects[_selectedSubject];
+    final category = _categoryForTab;
+    final subject = _selectedSubject == 0
+        ? null
+        : _subjects(allDocuments)[_selectedSubject];
     return allDocuments.where((document) {
       final matchesCategory = document.category == category;
       final matchesSubject = subject == null || document.subject == subject;
@@ -75,6 +75,39 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     }
   }
 
+  Future<void> _uploadDocument() async {
+    final file = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'docx', 'ppt', 'pptx'],
+    );
+    if (file == null || !mounted) return;
+    setState(() => _isUploading = true);
+    try {
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) throw StateError('Tệp không có nội dung.');
+      await ref
+          .read(documentUseCasesProvider)
+          .uploadDocument(
+            title: file.name.replaceFirst(RegExp(r'\.[^.]+$'), ''),
+            subject: 'Chưa phân loại',
+            fileName: file.name,
+            fileType: file.extension ?? 'file',
+            bytes: bytes,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã tải tài liệu lên kho của bạn.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể tải tài liệu lên: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -84,111 +117,147 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final repository = ref.watch(documentRepositoryProvider);
+    final repository = ref.read(documentRepositoryProvider);
     final documentsUseCases = ref.read(documentUseCasesProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AuthBackground(
         child: SafeArea(
-          child: Builder(
-            builder: (context) {
-              final allDocuments = repository.documents;
-              final documents = _filteredDocuments(allDocuments);
-              final popular = documents.take(2).toList();
-              final selected = documents.length > 2
-                  ? documents.skip(2).toList()
-                  : documents;
-              return SingleChildScrollView(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(21, 7, 21, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _DocumentsHeader(onOpenLibrary: _openLibrary),
-                    const SizedBox(height: 10),
-                    DocSearchBar(
-                      controller: _searchController,
-                      onChanged: (value) =>
-                          setState(() => _query = value.trim()),
-                    ),
-                    const SizedBox(height: 11),
-                    StudyPromptCard(onChoose: _scrollToPopular),
-                    const SizedBox(height: 13),
-                    FilterTabs(
-                      items: const ['Tài liệu môn học', 'Tài liệu ôn thi & Đề'],
-                      selectedIndex: _selectedTab,
-                      onSelected: (index) => setState(() {
-                        _selectedTab = index;
-                        _selectedSubject = 0;
-                      }),
-                    ),
-                    const SizedBox(height: 10),
-                    SubjectChips(
-                      items: _subjects,
-                      selectedIndex: _selectedSubject,
-                      onSelected: (index) =>
-                          setState(() => _selectedSubject = index),
-                    ),
-                    const SizedBox(height: 16),
-                    KeyedSubtree(
-                      key: _popularKey,
-                      child: _SectionHeading(
-                        title: 'Tài liệu tải nhiều nhất',
+          child: AnimatedBuilder(
+            animation: repository,
+            builder: (context, _) => Builder(
+              builder: (context) {
+                final allDocuments = repository.documents;
+                final documents = _filteredDocuments(allDocuments);
+                final popular = documents.take(2).toList();
+                final selected = documents.skip(2).toList();
+                return SingleChildScrollView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(21, 7, 21, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _DocumentsHeader(onOpenLibrary: _openLibrary),
+                      const SizedBox(height: 10),
+                      DocSearchBar(
+                        controller: _searchController,
+                        onChanged: (value) =>
+                            setState(() => _query = value.trim()),
+                      ),
+                      if (repository.loadError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Chưa tải được tài liệu. Kiểm tra kết nối rồi thử lại.',
+                                  style: TextStyle(color: Colors.redAccent),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => unawaited(
+                                  repository.hydrateFromSupabase().catchError(
+                                    (_) {},
+                                  ),
+                                ),
+                                child: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 11),
+                      StudyPromptCard(onChoose: _scrollToPopular),
+                      const SizedBox(height: 13),
+                      FilterTabs(
+                        items: const [
+                          'Tài liệu môn học',
+                          'Tài liệu ôn thi & Đề',
+                        ],
+                        selectedIndex: _selectedTab,
+                        onSelected: (index) => setState(() {
+                          _selectedTab = index;
+                          _selectedSubject = 0;
+                        }),
+                      ),
+                      const SizedBox(height: 10),
+                      SubjectChips(
+                        items: _subjects(allDocuments),
+                        selectedIndex: _selectedSubject,
+                        onSelected: (index) =>
+                            setState(() => _selectedSubject = index),
+                      ),
+                      const SizedBox(height: 16),
+                      KeyedSubtree(
+                        key: _popularKey,
+                        child: _SectionHeading(
+                          title: 'Tài liệu tải nhiều nhất',
+                          action: 'Xem tất cả',
+                          iconAsset: 'assets/images/documents/fire.svg',
+                          onAction: () => setState(() => _selectedSubject = 0),
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      SizedBox(
+                        height: 202,
+                        child: repository.isLoading && allDocuments.isEmpty
+                            ? const Center(child: CircularProgressIndicator())
+                            : popular.isEmpty
+                            ? const _EmptyResults()
+                            : ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: popular.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 12),
+                                itemBuilder: (context, index) {
+                                  final document = popular[index];
+                                  return DocCard(
+                                    document: document,
+                                    onOpen: () => _openDocument(document),
+                                    onDownload: () => _openDocument(document),
+                                    onToggleSaved: () => documentsUseCases
+                                        .toggleSaved(document.id),
+                                  );
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 18),
+                      _SectionHeading(
+                        title: _selectedTab == 0
+                            ? 'Danh mục tài liệu chọn lọc'
+                            : 'Danh mục tài liệu ôn tập',
                         action: 'Xem tất cả',
-                        iconAsset: 'assets/images/documents/fire.svg',
                         onAction: () => setState(() => _selectedSubject = 0),
                       ),
-                    ),
-                    const SizedBox(height: 9),
-                    SizedBox(
-                      height: 202,
-                      child: popular.isEmpty
-                          ? const _EmptyResults()
-                          : ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: popular.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                final document = popular[index];
-                                return DocCard(
-                                  document: document,
-                                  onOpen: () => _openDocument(document),
-                                  onDownload: () => _openDocument(document),
-                                  onToggleSaved: () => documentsUseCases
-                                      .toggleSaved(document.id),
-                                );
-                              },
+                      const SizedBox(height: 9),
+                      if (selected.isEmpty)
+                        const _EmptyResults()
+                      else
+                        for (
+                          var index = 0;
+                          index < selected.length;
+                          index++
+                        ) ...[
+                          if (index > 0) const SizedBox(height: 10),
+                          DocListTile(
+                            document: selected[index],
+                            onOpen: () => _openDocument(selected[index]),
+                            onDownload: () => _openDocument(selected[index]),
+                            onToggleSaved: () => documentsUseCases.toggleSaved(
+                              selected[index].id,
                             ),
-                    ),
-                    const SizedBox(height: 18),
-                    _SectionHeading(
-                      title: _selectedTab == 0
-                          ? 'Danh mục tài liệu chọn lọc'
-                          : 'Danh mục tài liệu ôn tập',
-                      action: 'Xem tất cả',
-                      onAction: () => setState(() => _selectedSubject = 0),
-                    ),
-                    const SizedBox(height: 9),
-                    if (selected.isEmpty)
-                      const _EmptyResults()
-                    else
-                      for (var index = 0; index < selected.length; index++) ...[
-                        if (index > 0) const SizedBox(height: 10),
-                        DocListTile(
-                          document: selected[index],
-                          onOpen: () => _openDocument(selected[index]),
-                          onDownload: () => _openDocument(selected[index]),
-                          onToggleSaved: () => documentsUseCases
-                              .toggleSaved(selected[index].id),
-                        ),
-                      ],
-                    const SizedBox(height: 16),
-                    const _ShareDocumentPrompt(),
-                  ],
-                ),
-              );
-            },
+                          ),
+                        ],
+                      const SizedBox(height: 16),
+                      _ShareDocumentPrompt(
+                        isUploading: _isUploading,
+                        onUpload: _uploadDocument,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -298,7 +367,13 @@ class _SectionHeading extends StatelessWidget {
 }
 
 class _ShareDocumentPrompt extends StatelessWidget {
-  const _ShareDocumentPrompt();
+  const _ShareDocumentPrompt({
+    required this.isUploading,
+    required this.onUpload,
+  });
+
+  final bool isUploading;
+  final VoidCallback onUpload;
 
   @override
   Widget build(BuildContext context) {
@@ -353,11 +428,7 @@ class _ShareDocumentPrompt extends StatelessWidget {
             ),
           ),
           FilledButton(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Chia sẻ tài liệu sẽ sớm khả dụng.'),
-              ),
-            ),
+            onPressed: isUploading ? null : onUpload,
             style: FilledButton.styleFrom(
               backgroundColor: _documentsNavy,
               foregroundColor: Colors.white,
@@ -369,7 +440,12 @@ class _ShareDocumentPrompt extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            child: const Text('Đăng tải'),
+            child: isUploading
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Đăng tải'),
           ),
         ],
       ),
