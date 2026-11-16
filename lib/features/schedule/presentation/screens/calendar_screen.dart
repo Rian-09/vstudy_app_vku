@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:flutter_application_1/features/schedule/data/models/calendar_event.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/ai_planner/data/datasources/mlkit_ocr_datasource.dart';
+import 'package:flutter_application_1/features/ai_planner/domain/entities/ocr_schedule_draft.dart';
+import 'package:flutter_application_1/features/ai_planner/domain/services/ocr_schedule_parser.dart';
 import 'package:flutter_application_1/features/schedule/presentation/providers/schedule_providers.dart';
 import 'package:flutter_application_1/features/schedule/presentation/widgets/calendar_widgets.dart';
 
@@ -61,6 +65,92 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         .pushNamed<void>('/calendar/event-detail', arguments: event.id);
   }
 
+  Future<void> _scanTimetable() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image == null || !mounted) return;
+    try {
+      final ocr = MlKitOcrDataSource();
+      final text = await ocr.recognizeFile(image.path);
+      await ocr.dispose();
+      if (!mounted) return;
+      final drafts = const OcrScheduleParser().parse(text);
+      if (drafts.isEmpty) {
+        _showMessage('Không tìm thấy dòng lịch có ngày và giờ rõ ràng.');
+        return;
+      }
+      final shouldSave = await _confirmOcrDrafts(drafts);
+      if (shouldSave != true || !mounted) return;
+      final controller = ref.read(scheduleControllerProvider.notifier);
+      for (var index = 0; index < drafts.length; index++) {
+        final draft = drafts[index];
+        await controller.add(_toCalendarEvent(draft, index));
+      }
+      if (mounted) _showMessage('Đã thêm ${drafts.length} lịch từ ảnh.');
+    } on UnsupportedError catch (error) {
+      if (mounted) _showMessage(error.message ?? 'OCR chưa hỗ trợ thiết bị này.');
+    } catch (error) {
+      if (mounted) _showMessage('Không thể đọc ảnh: $error');
+    }
+  }
+
+  Future<bool?> _confirmOcrDrafts(List<OcrScheduleDraft> drafts) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận lịch từ ảnh'),
+        content: SizedBox(
+          width: 360,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: drafts.length,
+            itemBuilder: (context, index) {
+              final draft = drafts[index];
+              return ListTile(
+                dense: true,
+                title: Text(draft.title),
+                subtitle: Text(
+                  '${_formatDateTime(draft.startsAt)} - ${_formatTime(draft.endsAt)}'
+                  '${draft.location.isEmpty ? '' : ' · ${draft.location}'}',
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Thêm lịch')),
+        ],
+      ),
+    );
+  }
+
+  CalendarEvent _toCalendarEvent(OcrScheduleDraft draft, int index) => CalendarEvent(
+    id: 'ocr-${DateTime.now().microsecondsSinceEpoch}-$index',
+    title: draft.title,
+    subject: draft.subject,
+    type: CalendarEventType.classSession,
+    format: CalendarEventFormat.inClass,
+    date: DateTime(draft.startsAt.year, draft.startsAt.month, draft.startsAt.day),
+    startTime: TimeOfDay.fromDateTime(draft.startsAt),
+    endTime: TimeOfDay.fromDateTime(draft.endsAt),
+    location: draft.location,
+    note: draft.note,
+    repeat: 'Không lặp lại',
+    reminder: 'Không nhắc',
+    checklist: const [],
+  );
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _formatDateTime(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')} ${_formatTime(date)}';
+
+  String _formatTime(DateTime date) =>
+      '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
     final scheduleState = ref.watch(scheduleControllerProvider);
@@ -99,6 +189,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   _CalendarTop(
                     selectedDate: _selectedDate,
                     onAdd: _openAddForm,
+                    onScan: _scanTimetable,
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -355,10 +446,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 */
 
 class _CalendarTop extends StatelessWidget {
-  const _CalendarTop({required this.selectedDate, required this.onAdd});
+  const _CalendarTop({
+    required this.selectedDate,
+    required this.onAdd,
+    required this.onScan,
+  });
 
   final DateTime selectedDate;
   final VoidCallback onAdd;
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
@@ -401,25 +497,39 @@ class _CalendarTop extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(
-                      height: 40,
-                      child: FilledButton.icon(
-                        onPressed: onAdd,
-                        icon: const Icon(Icons.add, size: 20),
-                        label: const Text('Thêm'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _calendarNavy,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 13),
-                          shape: const StadiumBorder(),
-                          textStyle: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: onScan,
+                          tooltip: 'Quét thời khóa biểu',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: _calendarNavy,
+                          ),
+                          icon: const Icon(Icons.document_scanner_outlined, size: 20),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          height: 40,
+                          child: FilledButton.icon(
+                            onPressed: onAdd,
+                            icon: const Icon(Icons.add, size: 20),
+                            label: const Text('Thêm'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _calendarNavy,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 13),
+                              shape: const StadiumBorder(),
+                              textStyle: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
+                      ],
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 9),
