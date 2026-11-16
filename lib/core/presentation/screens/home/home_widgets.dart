@@ -79,9 +79,18 @@ class GreetingHeader extends StatelessWidget {
 }
 
 class StudyProgressCard extends StatelessWidget {
-  const StudyProgressCard({super.key, required this.onQuizTap});
+  const StudyProgressCard({
+    super.key,
+    required this.onQuizTap,
+    required this.completedMinutes,
+    required this.goalMinutes,
+    required this.quizAverage,
+  });
 
   final VoidCallback onQuizTap;
+  final int completedMinutes;
+  final int goalMinutes;
+  final int quizAverage;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +126,7 @@ class StudyProgressCard extends StatelessWidget {
                 ),
                 child: Stack(
                   children: [
-                    const Positioned(
+                    Positioned(
                       left: 0,
                       top: 0,
                       child: Text(
@@ -130,11 +139,11 @@ class StudyProgressCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Positioned(
+                    Positioned(
                       left: 0,
                       top: 22,
                       child: Text(
-                        '100/180 phút',
+                        '$completedMinutes/$goalMinutes phút',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 20,
@@ -144,12 +153,14 @@ class StudyProgressCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Positioned(
+                    Positioned(
                       left: 0,
                       top: 55,
                       width: 164,
                       child: Text(
-                        'Cố lên còn 80 phút nữa là hoàn thành!!',
+                        completedMinutes >= goalMinutes
+                            ? 'Bạn đã hoàn thành mục tiêu hôm nay!'
+                            : 'Cố lên còn ${goalMinutes - completedMinutes} phút nữa là hoàn thành!!',
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 11,
@@ -195,8 +206,8 @@ class StudyProgressCard extends StatelessWidget {
                             width: 88,
                             height: 88,
                           ),
-                          const Text(
-                            '55,57%',
+                          Text(
+                            '${quizAverage.toStringAsFixed(0)}%',
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 14,
@@ -220,8 +231,13 @@ class StudyProgressCard extends StatelessWidget {
 }
 
 class QuickAccessList extends StatelessWidget {
-  const QuickAccessList({super.key, required this.onItemTap});
+  const QuickAccessList({
+    super.key,
+    required this.items,
+    required this.onItemTap,
+  });
 
+  final List<QuickAccessItem> items;
   final ValueChanged<QuickAccessItem> onItemTap;
 
   @override
@@ -233,15 +249,21 @@ class QuickAccessList extends StatelessWidget {
           padding: EdgeInsets.only(bottom: 14),
           child: Text('Truy cập nhanh', style: _SectionTitle.style),
         ),
-        SizedBox(
+        if (items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text('Chưa có quiz hoặc tài liệu đang học.'),
+          )
+        else
+          SizedBox(
           height: 143,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            itemCount: mockQuickAccessItems.length,
+            itemCount: items.length,
             separatorBuilder: (context, index) => const SizedBox(width: 25),
             itemBuilder: (context, index) {
-              final item = mockQuickAccessItems[index];
+              final item = items[index];
               return QuickAccessCard(item: item, onTap: () => onItemTap(item));
             },
           ),
@@ -456,8 +478,13 @@ class AiSuggestionBanner extends StatelessWidget {
 }
 
 class WeeklyChart extends StatelessWidget {
-  const WeeklyChart({super.key, required this.onDetailsTap});
+  const WeeklyChart({
+    super.key,
+    required this.values,
+    required this.onDetailsTap,
+  });
 
+  final List<double> values;
   final VoidCallback onDetailsTap;
 
   @override
@@ -511,9 +538,9 @@ class WeeklyChart extends StatelessWidget {
                 children: [
                   Column(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: CustomPaint(
-                          painter: WeeklyChartPainter(mockWeeklyStudyHours),
+                          painter: WeeklyChartPainter(values),
                           child: SizedBox.expand(),
                         ),
                       ),
@@ -609,8 +636,13 @@ class WeeklyChartPainter extends CustomPainter {
 }
 
 class UpcomingDeadlines extends StatelessWidget {
-  const UpcomingDeadlines({super.key, required this.onSeeAllTap});
+  const UpcomingDeadlines({
+    super.key,
+    required this.items,
+    required this.onSeeAllTap,
+  });
 
+  final List<DeadlineItem> items;
   final VoidCallback onSeeAllTap;
 
   @override
@@ -620,7 +652,8 @@ class UpcomingDeadlines extends StatelessWidget {
         Row(
           children: [
             const Expanded(child: Text('Sắp đến', style: _SectionTitle.style)),
-            TextButton(
+            if (items.isNotEmpty)
+              TextButton(
               onPressed: onSeeAllTap,
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFE76D6D),
@@ -639,15 +672,21 @@ class UpcomingDeadlines extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 21),
-        for (var index = 0; index < mockDeadlines.length; index++) ...[
-          if (index > 0) const SizedBox(height: 22),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 350),
-              child: DeadlineCard(item: mockDeadlines[index]),
+        if (items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('Chưa có lịch sắp đến.'),
+          )
+        else
+          for (var index = 0; index < items.length; index++) ...[
+            if (index > 0) const SizedBox(height: 22),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 350),
+                child: DeadlineCard(item: items[index]),
+              ),
             ),
-          ),
-        ],
+          ],
       ],
     );
   }
