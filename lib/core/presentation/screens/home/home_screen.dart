@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
 import 'package:flutter_application_1/features/auth/presentation/providers/auth_providers.dart';
 import 'package:flutter_application_1/features/documents/data/models/document.dart';

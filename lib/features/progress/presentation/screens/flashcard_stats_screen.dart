@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:flutter_application_1/features/progress/data/models/stats_models.dart';
 import 'package:flutter_application_1/features/progress/domain/usecases/stats_usecases.dart';

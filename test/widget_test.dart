@@ -5,7 +5,7 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/core/error/failure.dart';
 import 'package:flutter_application_1/core/presentation/main_shell.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';

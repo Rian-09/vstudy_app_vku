@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class SplashLogo extends StatelessWidget {
   const SplashLogo({super.key, required this.width, required this.height});
