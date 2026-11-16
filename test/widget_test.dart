@@ -27,6 +27,7 @@ import 'package:flutter_application_1/features/schedule/data/datasources/calenda
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
 import 'package:flutter_application_1/core/widgets/profile_dialogs.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
   test('demo and registered accounts authenticate with normalized emails', () {
@@ -164,9 +165,11 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: const ProfileScreen(),
-        routes: {'/edit-profile': (context) => const EditProfileScreen()},
+      ProviderScope(
+        child: MaterialApp(
+          home: const ProfileScreen(),
+          routes: {'/edit-profile': (context) => const EditProfileScreen()},
+        ),
       ),
     );
     expect(find.text('Tom'), findsOneWidget);
@@ -200,12 +203,14 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: const ProfileScreen(),
-        routes: {
-          '/login': (context) =>
-              const Scaffold(body: Text('Login placeholder')),
-        },
+      ProviderScope(
+        child: MaterialApp(
+          home: const ProfileScreen(),
+          routes: {
+            '/login': (context) =>
+                const Scaffold(body: Text('Login placeholder')),
+          },
+        ),
       ),
     );
     await tester.ensureVisible(find.text('Đăng xuất'));

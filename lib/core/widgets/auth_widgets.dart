@@ -423,17 +423,22 @@ class AuthSwitchPrompt extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(prompt, style: AuthTextStyles.body),
-          const SizedBox(width: 24),
-          TextButton(
-            onPressed: onPressed,
-            style: TextButton.styleFrom(
-              foregroundColor: AuthColors.navy,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              textStyle: AuthTextStyles.label,
+          Flexible(
+            child: Text(
+              prompt,
+              style: AuthTextStyles.body,
+              overflow: TextOverflow.ellipsis,
             ),
-            child: Text(action),
           ),
+          const SizedBox(width: 8),
+          TextButton(
+              onPressed: onPressed,
+              style: TextButton.styleFrom(
+                foregroundColor: AuthColors.navy,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                textStyle: AuthTextStyles.label,
+              ),
+              child: Text(action)),
         ],
       ),
     );
