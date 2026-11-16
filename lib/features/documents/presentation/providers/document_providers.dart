@@ -7,7 +7,11 @@ import '../../data/models/document.dart';
 import '../../data/repositories/document_repository_impl.dart';
 import '../../domain/usecases/document_usecases.dart';
 
-final documentRepositoryProvider = ChangeNotifierProvider<DocumentRepository>(
+// The repository is a process-wide service because auth hydration and the
+// document screens share its local cache. A plain Provider must be used here:
+// ChangeNotifierProvider owns and disposes its value when a ProviderScope is
+// torn down, which would dispose this singleton and break later screens/tests.
+final documentRepositoryProvider = Provider<DocumentRepository>(
   (ref) => DocumentRepository.instance,
 );
 
