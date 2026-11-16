@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../local/documents_database.dart';
+import '../models/document.dart';
 
 class DocumentStorageDataSource {
   DocumentStorageDataSource({required this._client, required this._database});
@@ -13,9 +14,15 @@ class DocumentStorageDataSource {
   Future<Uint8List> downloadAndCache({
     required String documentId,
     required String filePath,
+    StudyDocument? document,
   }) async {
     final bytes = await _client.storage.from('documents').download(filePath);
-    await _database.savePdf(id: documentId, filePath: filePath, bytes: bytes);
+    await _database.savePdf(
+      id: documentId,
+      filePath: filePath,
+      bytes: bytes,
+      document: document,
+    );
     return bytes;
   }
 

@@ -60,7 +60,12 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
     );
     state = result.fold(
       (failure) => AsyncError(failure.message, StackTrace.current),
-      AsyncData.new,
+      (user) {
+        if (user != null) {
+          _hydrateDocuments();
+        }
+        return AsyncData(user);
+      },
     );
   }
 
@@ -86,7 +91,7 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
         await DocumentRepository.instance.hydrateFromSupabase();
       }
     } catch (_) {
-      // Keep the local document catalogue when remote content is unavailable.
+      await DocumentRepository.instance.hydrateFromCache();
     }
   }
 

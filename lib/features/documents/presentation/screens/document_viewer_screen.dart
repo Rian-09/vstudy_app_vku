@@ -112,6 +112,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
           .downloadAndCache(
             documentId: document.id,
             filePath: document.filePath!,
+            document: document,
           );
     } catch (_) {
       if (!mounted) return;

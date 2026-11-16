@@ -76,6 +76,29 @@ class StudyDocument {
     );
   }
 
+  factory StudyDocument.fromCache(CachedDocument row) {
+    final category = row.category == 'course'
+        ? DocumentCategory.course
+        : DocumentCategory.exam;
+    return StudyDocument(
+      id: row.id,
+      title: row.title ?? 'Tài liệu đã tải',
+      subject: row.subject ?? 'Chưa phân loại',
+      author: row.author ?? 'V-Study',
+      type: row.type ?? 'PDF',
+      size: row.size ?? '—',
+      pages: row.pages ?? 0,
+      thumbnail: row.thumbnail ?? 'assets/images/documents/exam_history.png',
+      isDownloaded: true,
+      isSaved: row.isSaved,
+      progress: row.progress,
+      category: category,
+      downloads: row.downloads ?? 0,
+      updatedAt: row.updatedAt ?? '',
+      filePath: row.filePath,
+    );
+  }
+
   StudyDocument copyWith({
     bool? isDownloaded,
     bool? isSaved,
@@ -240,6 +263,19 @@ class DocumentRepository extends ChangeNotifier {
               : document,
         ),
       );
+    notifyListeners();
+  }
+
+  Future<void> hydrateFromCache() async {
+    final cached = await DocumentsDatabase.instance.getCachedDocuments();
+    final documents = cached
+        .where((row) => row.title != null)
+        .map(StudyDocument.fromCache)
+        .toList(growable: false);
+    if (documents.isEmpty) return;
+    _documents
+      ..clear()
+      ..addAll(documents);
     notifyListeners();
   }
 
