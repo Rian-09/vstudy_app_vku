@@ -15,6 +15,8 @@ class CachedDocuments extends Table {
 
 @DriftDatabase(tables: [CachedDocuments])
 class DocumentsDatabase extends _$DocumentsDatabase {
+  static final instance = DocumentsDatabase();
+
   DocumentsDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'vstudy_documents'));
 
@@ -48,5 +50,10 @@ class DocumentsDatabase extends _$DocumentsDatabase {
       cachedDocuments,
     )..where((table) => table.id.equals(id))).getSingleOrNull();
     return row != null;
+  }
+
+  Future<Set<String>> cachedDocumentIds() async {
+    final rows = await select(cachedDocuments).get();
+    return rows.map((row) => row.id).toSet();
   }
 }

@@ -17,9 +17,7 @@ final documentUseCasesProvider = Provider<DocumentUseCases>((ref) {
 });
 
 final documentsDatabaseProvider = Provider<DocumentsDatabase>((ref) {
-  final database = DocumentsDatabase();
-  ref.onDispose(database.close);
-  return database;
+  return DocumentsDatabase.instance;
 });
 
 final documentStorageDataSourceProvider = Provider<DocumentStorageDataSource>((

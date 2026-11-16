@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../datasources/document_remote_datasource.dart';
+import '../local/documents_database.dart';
 
 @immutable
 class StudyDocument {
@@ -229,9 +230,16 @@ class DocumentRepository extends ChangeNotifier {
     final client = Supabase.instance.client;
     final remote = await DocumentRemoteDataSource(client)
         .fetchPublishedDocuments();
+    final cachedIds = await DocumentsDatabase.instance.cachedDocumentIds();
     _documents
       ..clear()
-      ..addAll(remote);
+      ..addAll(
+        remote.map(
+          (document) => cachedIds.contains(document.id)
+              ? document.copyWith(isDownloaded: true, progress: 1)
+              : document,
+        ),
+      );
     notifyListeners();
   }
 
