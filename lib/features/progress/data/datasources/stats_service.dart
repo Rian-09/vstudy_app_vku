@@ -1,4 +1,7 @@
 import '../models/stats_models.dart';
+import '../../../schedule/data/datasources/calendar_service.dart';
+import '../../../schedule/data/models/calendar_event.dart';
+import '../../../quiz/data/datasources/quiz_service.dart';
 
 class StatsService {
   StatsService._();
@@ -23,26 +26,8 @@ class StatsService {
   static const semesterGoalHours = 160;
   static const semesterTotalHours = 128;
   static const streakDays = 7;
-  static const averageQuizScore = 78;
   static const focusSessions = 18;
 
-  static const _weekMinutes = [90, 120, 125, 110, 135, 150, 130];
-  static const _monthMinutes = [
-    245,
-    185,
-    210,
-    140,
-    180,
-    180,
-    60,
-    180,
-    180,
-    245,
-    0,
-    180,
-    180,
-    125,
-  ];
   static const semesterWeeklyHours = [
     6.1,
     7.2,
@@ -207,62 +192,11 @@ class StatsService {
     ),
   ];
 
-  static const _activities = <int, List<StudyActivity>>{
-    12: [
-      StudyActivity(
-        time: '09:00',
-        title: 'Giải tích 1',
-        description: 'Bài tập giới hạn · Hoàn thành 5 bài',
-        durationMinutes: 50,
-      ),
-      StudyActivity(
-        time: '19:30',
-        title: 'Ôn flashcard',
-        description: 'Giải tích 1 · Ôn 18 thẻ',
-        durationMinutes: 40,
-      ),
-    ],
-    13: [
-      StudyActivity(
-        time: '10:00',
-        title: 'Pháp luật đại cương',
-        description: 'Đọc chương 2 · Ghi chú bài học',
-        durationMinutes: 60,
-      ),
-      StudyActivity(
-        time: '20:00',
-        title: 'Ôn tập bài giảng',
-        description: 'Tóm tắt nội dung trong ngày',
-        durationMinutes: 60,
-      ),
-    ],
-    14: [
-      StudyActivity(
-        time: '08:00',
-        title: 'Giải tích 1',
-        description: 'Bài tập giới hạn · Hoàn thành 6 bài',
-        durationMinutes: 45,
-      ),
-      StudyActivity(
-        time: '14:00',
-        title: 'Triết học',
-        description: 'Đọc chương 2 · Ghi chú 4 ý chính',
-        durationMinutes: 50,
-      ),
-      StudyActivity(
-        time: '19:00',
-        title: 'Ôn flashcard',
-        description: 'Giải tích 1 · Ôn 20 thẻ, nhớ 17 thẻ',
-        durationMinutes: 30,
-      ),
-    ],
-  };
-
   List<StudyDayStat> get weekDays => List.generate(
-    _weekMinutes.length,
+    7,
     (index) => StudyDayStat(
       date: weekStart.add(Duration(days: index)),
-      minutes: _weekMinutes[index],
+      minutes: _studyMinutesForDate(weekStart.add(Duration(days: index))),
     ),
   );
 
@@ -289,7 +223,7 @@ class StatsService {
     final day = index + 1;
     return StudyDayStat(
       date: DateTime(month.year, month.month, day),
-      minutes: day <= _monthMinutes.length ? _monthMinutes[day - 1] : 0,
+      minutes: _studyMinutesForDate(DateTime(month.year, month.month, day)),
     );
   });
 
@@ -304,12 +238,47 @@ class StatsService {
 
   int get semesterTotalMinutes => semesterTotalHours * 60;
 
-  List<StudyActivity> activitiesForDate(DateTime date) {
-    if (date.year != month.year || date.month != month.month) {
-      return const [];
-    }
-    return _activities[date.day] ?? const [];
+  int get averageQuizScore {
+    final results = QuizService.recentResults;
+    if (results.isEmpty) return 0;
+    final average = results.fold<double>(
+          0,
+          (total, result) => total + result.score,
+        ) /
+        results.length;
+    return (average * 10).round();
   }
+
+  List<StudyActivity> activitiesForDate(DateTime date) {
+    return CalendarService.instance.events
+        .where(
+          (event) =>
+              _sameDate(event.date, date) &&
+              event.type != CalendarEventType.deadline,
+        )
+        .map(
+          (event) => StudyActivity(
+            time: _formatTime(event.startTime.hour, event.startTime.minute),
+            title: event.title,
+            description: event.location.isEmpty
+                ? event.subject
+                : '${event.subject} · ${event.location}',
+            durationMinutes: event.duration.inMinutes,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  int _studyMinutesForDate(DateTime date) => CalendarService.instance.events
+      .where(
+        (event) =>
+            _sameDate(event.date, date) &&
+            event.type != CalendarEventType.deadline,
+      )
+      .fold(0, (total, event) => total + event.duration.inMinutes);
+
+  String _formatTime(int hour, int minute) =>
+      '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
   StudyDayStat dayForDate(DateTime date) {
     for (final day in weekDays) {

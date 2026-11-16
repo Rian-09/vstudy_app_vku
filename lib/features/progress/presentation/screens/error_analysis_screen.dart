@@ -34,8 +34,8 @@ class ErrorAnalysisScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Row(
-                children: const [
-                  Expanded(
+                children: [
+                  const Expanded(
                     child: _ErrorMetric(label: 'Câu trả lời sai', value: '18'),
                   ),
                   SizedBox(width: 10),

@@ -37,7 +37,7 @@ class StatsUseCases {
   static const semesterGoalHours = data.StatsService.semesterGoalHours;
   static const semesterTotalHours = data.StatsService.semesterTotalHours;
   static const streakDays = data.StatsService.streakDays;
-  static const averageQuizScore = data.StatsService.averageQuizScore;
+  static int get averageQuizScore => data.StatsService.instance.averageQuizScore;
   static const semesterWeeklyHours = data.StatsService.semesterWeeklyHours;
   static const focusSessionCount = data.StatsService.focusSessionCount;
   static const focusBestDay = data.StatsService.focusBestDay;

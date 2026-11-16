@@ -119,7 +119,7 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: _MetricCard(
                 label: 'Quiz trung bình',
                 value: '${StatsService.averageQuizScore}%',
