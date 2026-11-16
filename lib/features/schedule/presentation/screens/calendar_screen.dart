@@ -21,7 +21,7 @@ class CalendarScreen extends ConsumerStatefulWidget {
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   CalendarViewMode _mode = CalendarViewMode.day;
-  DateTime _selectedDate = DateTime(2026, 10, 15);
+  DateTime _selectedDate = DateTime.now();
 
   DateTime get _weekStart => DateTime(
     _selectedDate.year,

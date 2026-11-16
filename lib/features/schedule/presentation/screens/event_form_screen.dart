@@ -56,7 +56,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     _subjectController = TextEditingController(text: event?.subject ?? '');
     _locationController = TextEditingController(text: event?.location ?? '');
     _noteController = TextEditingController(text: event?.note ?? '');
-    _date = event?.date ?? DateTime(2026, 10, 15);
+    final today = DateTime.now();
+    _date = event?.date ?? DateTime(today.year, today.month, today.day);
     _dateController = TextEditingController(text: _dateLabel);
     _startTime = event?.startTime ?? const TimeOfDay(hour: 12, minute: 0);
     _endTime = event?.endTime ?? const TimeOfDay(hour: 20, minute: 0);

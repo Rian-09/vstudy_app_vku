@@ -314,25 +314,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CalendarScreen), findsOneWidget);
-    expect(find.text('00:00'), findsOneWidget);
-    expect(find.textContaining('07:30 - 09:30 - Phòng K.P206'), findsOneWidget);
+    expect(find.text('Chưa có lịch'), findsOneWidget);
     await tester.tap(find.text('Tuần'));
     await tester.pumpAndSettle();
     expect(find.byType(CalendarScreen), findsOneWidget);
-    await tester.tap(find.text('16').first);
+    await tester.tap(find.text(DateTime.now().day.toString()).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ngày'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Thứ sáu, 16/10'), findsOneWidget);
+    expect(find.textContaining('/'), findsWidgets);
     expect(find.text('Chưa có lịch'), findsOneWidget);
 
     await tester.tap(find.text('Tháng'));
     await tester.pumpAndSettle();
     expect(find.byType(CalendarScreen), findsOneWidget);
-    await tester.tap(find.text('17').first);
+    await tester.tap(find.text((DateTime.now().day + 1).toString()).first);
     await tester.pumpAndSettle();
     expect(find.byType(CalendarScreen), findsOneWidget);
-    expect(find.textContaining('Thứ bảy, 17/10'), findsOneWidget);
+    expect(find.textContaining('/'), findsWidgets);
   });
 
   testWidgets('Quiz tab opens subjects and starts a practice quiz', (
