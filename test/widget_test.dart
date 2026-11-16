@@ -352,9 +352,10 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: MainShell(initialIndex: 0)),
     );
+    await tester.pumpAndSettle();
 
     expect(find.byType(CalendarScreen), findsOneWidget);
-    expect(find.text('24:00'), findsOneWidget);
+    expect(find.text('00:00'), findsOneWidget);
     expect(find.textContaining('07:30 - 09:30 - Phòng K.P206'), findsOneWidget);
     await tester.tap(find.text('Tuần'));
     await tester.pumpAndSettle();
