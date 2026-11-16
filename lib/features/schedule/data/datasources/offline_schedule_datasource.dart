@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/schedule_event.dart';
@@ -15,9 +16,25 @@ class OfflineScheduleDataSource implements ScheduleDataSource {
 
   final ScheduleDatabase database;
   final SupabaseClient client;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   SupabaseScheduleDataSource get _remote =>
       SupabaseScheduleDataSource(client);
+
+  void startAutoSync() {
+    _connectivitySubscription ??= Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      if (results.isNotEmpty && !results.contains(ConnectivityResult.none)) {
+        unawaited(syncPending());
+      }
+    });
+  }
+
+  Future<void> dispose() async {
+    await _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+  }
 
   @override
   Future<List<ScheduleEvent>> getEvents() async {

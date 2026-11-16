@@ -18,12 +18,14 @@ final scheduleRepositoryProvider = Provider<ScheduleRepository>(
   (ref) {
     const url = String.fromEnvironment('SUPABASE_URL');
     const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-    final dataSource = url.isEmpty || anonKey.isEmpty
-        ? LocalScheduleDataSource(CalendarService.instance)
-        : OfflineScheduleDataSource(
-            database: ScheduleDatabase.instance,
-            client: Supabase.instance.client,
-          );
+    if (url.isEmpty || anonKey.isEmpty) {
+      return ScheduleRepositoryImpl(LocalScheduleDataSource(CalendarService.instance));
+    }
+    final dataSource = OfflineScheduleDataSource(
+      database: ScheduleDatabase.instance,
+      client: Supabase.instance.client,
+    )..startAutoSync();
+    ref.onDispose(dataSource.dispose);
     return ScheduleRepositoryImpl(dataSource);
   },
 );
