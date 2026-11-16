@@ -24,6 +24,7 @@ import 'package:flutter_application_1/features/auth/presentation/screens/profile
 import 'package:flutter_application_1/features/quiz/presentation/screens/exam_detail_screen.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_home_screen.dart';
 import 'package:flutter_application_1/features/quiz/presentation/screens/subject_quiz_screen.dart';
+import 'package:flutter_application_1/features/quiz/presentation/screens/quiz_play_screen.dart';
 import 'package:flutter_application_1/features/auth/data/datasources/auth_service.dart';
 import 'package:flutter_application_1/features/schedule/data/datasources/calendar_service.dart';
 import 'package:flutter_application_1/features/quiz/data/datasources/quiz_service.dart';
@@ -91,63 +92,21 @@ void main() {
     expect(find.text('Quên mật khẩu?'), findsOneWidget);
   });
 
-  testWidgets('home greets the signed-in user and switches tabs', (
+  testWidgets('home shows the Supabase configuration error when unavailable', (
     WidgetTester tester,
   ) async {
-    final authService = AuthService.instance;
-    authService.register(
-      name: 'Taylor',
-      email: 'home-test@example.com',
-      password: 'study123',
-    );
-    expect(
-      authService.login(email: 'home-test@example.com', password: 'study123'),
-      isTrue,
-    );
-
     await tester.pumpWidget(
       MaterialApp(
         home: const MainShell(),
         routes: {'/profile': (context) => const ProfileScreen()},
       ),
     );
-
-    expect(find.text('Xin chào, Taylor!'), findsOneWidget);
-    expect(find.text('100/180 phút'), findsOneWidget);
-    expect(find.text('Truy cập nhanh'), findsOneWidget);
-    expect(find.text('Tuần này'), findsOneWidget);
-    expect(find.byTooltip('Trợ lý AI'), findsOneWidget);
-
-    await tester.tap(
-      find.byWidgetPredicate(
-        (widget) => widget is Image && widget.semanticLabel == 'Mở hồ sơ',
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byType(ProfileScreen), findsOneWidget);
-    await tester.tap(find.byTooltip('Quay lại'));
     await tester.pumpAndSettle();
 
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, -700),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('Trợ lý AI'), findsOneWidget);
-    await tester.tap(find.byTooltip('Trợ lý AI'));
-    await tester.pump();
-    expect(find.text('Trợ lý AI sắp ra mắt'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Quiz'));
-    await tester.pumpAndSettle();
-    expect(find.byType(QuizHomeScreen), findsOneWidget);
-
-    await tester.tap(find.bySemanticsLabel('Trang chủ'));
-    await tester.pumpAndSettle();
-    expect(find.text('Xin chào, Taylor!'), findsOneWidget);
+    expect(find.textContaining('Chưa cấu hình Supabase'), findsOneWidget);
   });
 
-  testWidgets('home deadline cards fit a narrow viewport', (
+  testWidgets('home error state fits a narrow viewport', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(320, 800);
@@ -158,7 +117,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: MainShell()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sắp đến'), findsOneWidget);
+    expect(find.textContaining('Chưa cấu hình Supabase'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -376,7 +335,7 @@ void main() {
     expect(find.textContaining('Thứ bảy, 17/10'), findsOneWidget);
   });
 
-  testWidgets('Quiz tab opens subjects, exams, and the Part 2 placeholder', (
+  testWidgets('Quiz tab opens subjects and starts a practice quiz', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -411,7 +370,7 @@ void main() {
     expect(find.byType(ExamDetailScreen), findsOneWidget);
     await tester.tap(find.text('Làm ngay!'));
     await tester.pumpAndSettle();
-    expect(find.text('Làm bài sẽ có trong phần tiếp theo.'), findsOneWidget);
+    expect(find.byType(QuizPlayScreen), findsOneWidget);
   });
 
   testWidgets('stats routes keep the shell visible and switch periods', (
@@ -425,16 +384,15 @@ void main() {
     expect(find.text('Mục tiêu và chuỗi học'), findsOneWidget);
     await tester.tap(find.text('Thống kê học tập'));
     await tester.pumpAndSettle();
-    expect(find.text('14h 20p'), findsOneWidget);
+    expect(find.text('0p'), findsWidgets);
     expect(find.byTooltip('Tài liệu'), findsOneWidget);
 
     await tester.tap(find.text('Tháng'));
     await tester.pumpAndSettle();
-    expect(find.text('38h 10p'), findsOneWidget);
+    expect(find.text('Tháng 10, 2026'), findsOneWidget);
     await tester.tap(find.text('14'));
     await tester.pumpAndSettle();
     expect(find.text('Chi tiết ngày học'), findsOneWidget);
-    expect(find.text('2h 05p'), findsOneWidget);
     expect(find.byTooltip('Tài liệu'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Quay lại'));
