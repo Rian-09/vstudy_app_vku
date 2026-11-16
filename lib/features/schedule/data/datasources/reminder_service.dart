@@ -13,21 +13,29 @@ class ReminderService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  bool _disabled = false;
 
   Future<void> initialize() async {
-    if (kIsWeb || _initialized) return;
+    if (kIsWeb || _initialized || _disabled) return;
     tz.initializeTimeZones();
     const settings = InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(),
     );
-    await _plugin.initialize(settings: settings);
-    _initialized = true;
+    try {
+      await _plugin.initialize(settings: settings);
+      _initialized = true;
+    } catch (_) {
+      // Test runners and unsupported platforms may not register a plugin
+      // implementation. Scheduling remains optional and must not block CRUD.
+      _disabled = true;
+    }
   }
 
   Future<void> scheduleFor(ScheduleEvent event) async {
     if (kIsWeb) return;
     await initialize();
+    if (_disabled) return;
     await cancelFor(event.id);
     final reminderOffsets = _offsetsFor(event.reminder);
     for (final offset in reminderOffsets) {
@@ -56,6 +64,7 @@ class ReminderService {
   Future<void> cancelFor(String eventId) async {
     if (kIsWeb) return;
     await initialize();
+    if (_disabled) return;
     await _plugin.cancel(
       id: _notificationId(eventId, const Duration(days: 1)),
     );

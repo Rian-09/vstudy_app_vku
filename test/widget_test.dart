@@ -538,18 +538,21 @@ void main() {
   ) async {
     final service = CalendarService.instance;
     await tester.pumpWidget(
-      MaterialApp(
-        home: const MainShell(initialIndex: 0),
-        routes: {
-          '/calendar/event-form': (context) => EventFormScreen(
-            event: ModalRoute.of(context)?.settings.arguments as CalendarEvent?,
-          ),
-          '/calendar/event-detail': (context) => EventDetailScreen(
-            eventId: ModalRoute.of(context)!.settings.arguments as String,
-          ),
-        },
+      ProviderScope(
+        child: MaterialApp(
+          home: const MainShell(initialIndex: 0),
+          routes: {
+            '/calendar/event-form': (context) => EventFormScreen(
+              event: ModalRoute.of(context)?.settings.arguments as CalendarEvent?,
+            ),
+            '/calendar/event-detail': (context) => EventDetailScreen(
+              eventId: ModalRoute.of(context)!.settings.arguments as String,
+            ),
+          },
+        ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Thêm'));
     await tester.pumpAndSettle();
