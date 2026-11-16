@@ -20,6 +20,17 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
+  void initState() {
+    super.initState();
+    // The event form is opened on the app navigator, which can be outside
+    // MainShell's nested ProviderScope. Reload when returning to Home so the
+    // dashboard always reflects the latest schedule from the active source.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(scheduleControllerProvider.notifier).load();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
     final user = authState.valueOrNull;
