@@ -367,6 +367,20 @@ class DocCard extends StatelessWidget {
                 child: _TypeBadge(label: document.type, isExam: isExam),
               ),
               Positioned(
+                right: 40,
+                top: 6,
+                child: document.isDownloaded
+                    ? const Tooltip(
+                        message: 'Đã lưu offline',
+                        child: Icon(
+                          Icons.offline_pin_outlined,
+                          size: 16,
+                          color: Color(0xFF15803D),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              Positioned(
                 right: 5,
                 top: 3,
                 child: Material(
@@ -455,6 +469,18 @@ class DocListTile extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (document.isDownloaded)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Tooltip(
+                              message: 'Đã lưu offline',
+                              child: Icon(
+                                Icons.offline_pin_outlined,
+                                size: 17,
+                                color: Color(0xFF15803D),
+                              ),
+                            ),
+                          ),
                         IconButton(
                           onPressed: onToggleSaved,
                           tooltip: document.isSaved
