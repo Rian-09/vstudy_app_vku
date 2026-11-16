@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../datasources/document_remote_datasource.dart';
+import '../datasources/document_sync_queue.dart';
 import '../local/documents_database.dart';
 
 @immutable
@@ -279,6 +282,17 @@ class DocumentRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> syncPendingChanges() async {
+    try {
+      await DocumentSyncQueue(
+        client: Supabase.instance.client,
+        database: DocumentsDatabase.instance,
+      ).syncPending();
+    } catch (_) {
+      // A missing connection keeps operations queued for the next login.
+    }
+  }
+
   List<StudyDocument> get documents => List.unmodifiable(_documents);
 
   List<StudyDocument> get savedOrDownloaded => List.unmodifiable(
@@ -319,5 +333,17 @@ class DocumentRepository extends ChangeNotifier {
     if (index < 0) return;
     _documents[index] = update(_documents[index]);
     notifyListeners();
+    unawaited(_enqueueSync(_documents[index]));
+  }
+
+  Future<void> _enqueueSync(StudyDocument document) async {
+    try {
+      await DocumentSyncQueue(
+        client: Supabase.instance.client,
+        database: DocumentsDatabase.instance,
+      ).enqueue(document);
+    } catch (_) {
+      // Local UI state remains usable if Supabase is not initialized.
+    }
   }
 }

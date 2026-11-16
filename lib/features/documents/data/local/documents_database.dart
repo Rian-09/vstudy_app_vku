@@ -27,7 +27,18 @@ class CachedDocuments extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [CachedDocuments])
+class DocumentSyncOperations extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+  TextColumn get operation => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+}
+
+@DriftDatabase(tables: [CachedDocuments, DocumentSyncOperations])
 class DocumentsDatabase extends _$DocumentsDatabase {
   static final instance = DocumentsDatabase();
 
@@ -35,7 +46,7 @@ class DocumentsDatabase extends _$DocumentsDatabase {
     : super(executor ?? driftDatabase(name: 'vstudy_documents'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +65,9 @@ class DocumentsDatabase extends _$DocumentsDatabase {
         await m.addColumn(cachedDocuments, cachedDocuments.updatedAt);
         await m.addColumn(cachedDocuments, cachedDocuments.isSaved);
         await m.addColumn(cachedDocuments, cachedDocuments.progress);
+      }
+      if (from < 3) {
+        await m.createTable(documentSyncOperations);
       }
     },
   );
@@ -107,5 +121,47 @@ class DocumentsDatabase extends _$DocumentsDatabase {
 
   Future<List<CachedDocument>> getCachedDocuments() {
     return select(cachedDocuments).get();
+  }
+
+  Future<int> enqueueSyncOperation({
+    required String entityType,
+    required String entityId,
+    required String operation,
+    required String payload,
+    required DateTime updatedAt,
+  }) {
+    return into(documentSyncOperations).insert(
+      DocumentSyncOperationsCompanion.insert(
+        entityType: entityType,
+        entityId: entityId,
+        operation: operation,
+        payload: payload,
+        updatedAt: updatedAt,
+      ),
+    );
+  }
+
+  Future<List<DocumentSyncOperation>> getPendingSyncOperations() {
+    return (select(documentSyncOperations)
+          ..where((row) => row.status.equals('pending'))
+          ..orderBy([(row) => OrderingTerm(expression: row.updatedAt)]))
+        .get();
+  }
+
+  Future<void> removeSyncOperation(int id) {
+    return (delete(
+      documentSyncOperations,
+    )..where((row) => row.id.equals(id))).go();
+  }
+
+  Future<void> markSyncOperationFailed(int id) async {
+    await (update(
+      documentSyncOperations,
+    )..where((row) => row.id.equals(id))).write(
+      const DocumentSyncOperationsCompanion(
+        status: Value('pending'),
+        attempts: Value.absent(),
+      ),
+    );
   }
 }

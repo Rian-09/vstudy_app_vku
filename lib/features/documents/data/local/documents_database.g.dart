@@ -897,17 +897,524 @@ class CachedDocumentsCompanion extends UpdateCompanion<CachedDocument> {
   }
 }
 
+class $DocumentSyncOperationsTable extends DocumentSyncOperations
+    with TableInfo<$DocumentSyncOperationsTable, DocumentSyncOperation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DocumentSyncOperationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _operationMeta = const VerificationMeta(
+    'operation',
+  );
+  @override
+  late final GeneratedColumn<String> operation = GeneratedColumn<String>(
+    'operation',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    entityType,
+    entityId,
+    operation,
+    payload,
+    updatedAt,
+    attempts,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'document_sync_operations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DocumentSyncOperation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('operation')) {
+      context.handle(
+        _operationMeta,
+        operation.isAcceptableOrUnknown(data['operation']!, _operationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_operationMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DocumentSyncOperation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DocumentSyncOperation(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      operation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $DocumentSyncOperationsTable createAlias(String alias) {
+    return $DocumentSyncOperationsTable(attachedDatabase, alias);
+  }
+}
+
+class DocumentSyncOperation extends DataClass
+    implements Insertable<DocumentSyncOperation> {
+  final int id;
+  final String entityType;
+  final String entityId;
+  final String operation;
+  final String payload;
+  final DateTime updatedAt;
+  final int attempts;
+  final String status;
+  const DocumentSyncOperation({
+    required this.id,
+    required this.entityType,
+    required this.entityId,
+    required this.operation,
+    required this.payload,
+    required this.updatedAt,
+    required this.attempts,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    map['operation'] = Variable<String>(operation);
+    map['payload'] = Variable<String>(payload);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['attempts'] = Variable<int>(attempts);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  DocumentSyncOperationsCompanion toCompanion(bool nullToAbsent) {
+    return DocumentSyncOperationsCompanion(
+      id: Value(id),
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      operation: Value(operation),
+      payload: Value(payload),
+      updatedAt: Value(updatedAt),
+      attempts: Value(attempts),
+      status: Value(status),
+    );
+  }
+
+  factory DocumentSyncOperation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DocumentSyncOperation(
+      id: serializer.fromJson<int>(json['id']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      operation: serializer.fromJson<String>(json['operation']),
+      payload: serializer.fromJson<String>(json['payload']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'entityType': serializer.toJson<String>(entityType),
+      'entityId': serializer.toJson<String>(entityId),
+      'operation': serializer.toJson<String>(operation),
+      'payload': serializer.toJson<String>(payload),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'attempts': serializer.toJson<int>(attempts),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  DocumentSyncOperation copyWith({
+    int? id,
+    String? entityType,
+    String? entityId,
+    String? operation,
+    String? payload,
+    DateTime? updatedAt,
+    int? attempts,
+    String? status,
+  }) => DocumentSyncOperation(
+    id: id ?? this.id,
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    operation: operation ?? this.operation,
+    payload: payload ?? this.payload,
+    updatedAt: updatedAt ?? this.updatedAt,
+    attempts: attempts ?? this.attempts,
+    status: status ?? this.status,
+  );
+  DocumentSyncOperation copyWithCompanion(
+    DocumentSyncOperationsCompanion data,
+  ) {
+    return DocumentSyncOperation(
+      id: data.id.present ? data.id.value : this.id,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      operation: data.operation.present ? data.operation.value : this.operation,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DocumentSyncOperation(')
+          ..write('id: $id, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('operation: $operation, ')
+          ..write('payload: $payload, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    entityType,
+    entityId,
+    operation,
+    payload,
+    updatedAt,
+    attempts,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DocumentSyncOperation &&
+          other.id == this.id &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.operation == this.operation &&
+          other.payload == this.payload &&
+          other.updatedAt == this.updatedAt &&
+          other.attempts == this.attempts &&
+          other.status == this.status);
+}
+
+class DocumentSyncOperationsCompanion
+    extends UpdateCompanion<DocumentSyncOperation> {
+  final Value<int> id;
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<String> operation;
+  final Value<String> payload;
+  final Value<DateTime> updatedAt;
+  final Value<int> attempts;
+  final Value<String> status;
+  const DocumentSyncOperationsCompanion({
+    this.id = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.operation = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.status = const Value.absent(),
+  });
+  DocumentSyncOperationsCompanion.insert({
+    this.id = const Value.absent(),
+    required String entityType,
+    required String entityId,
+    required String operation,
+    required String payload,
+    required DateTime updatedAt,
+    this.attempts = const Value.absent(),
+    this.status = const Value.absent(),
+  }) : entityType = Value(entityType),
+       entityId = Value(entityId),
+       operation = Value(operation),
+       payload = Value(payload),
+       updatedAt = Value(updatedAt);
+  static Insertable<DocumentSyncOperation> custom({
+    Expression<int>? id,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<String>? operation,
+    Expression<String>? payload,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? attempts,
+    Expression<String>? status,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (operation != null) 'operation': operation,
+      if (payload != null) 'payload': payload,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (attempts != null) 'attempts': attempts,
+      if (status != null) 'status': status,
+    });
+  }
+
+  DocumentSyncOperationsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? entityType,
+    Value<String>? entityId,
+    Value<String>? operation,
+    Value<String>? payload,
+    Value<DateTime>? updatedAt,
+    Value<int>? attempts,
+    Value<String>? status,
+  }) {
+    return DocumentSyncOperationsCompanion(
+      id: id ?? this.id,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      operation: operation ?? this.operation,
+      payload: payload ?? this.payload,
+      updatedAt: updatedAt ?? this.updatedAt,
+      attempts: attempts ?? this.attempts,
+      status: status ?? this.status,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (operation.present) {
+      map['operation'] = Variable<String>(operation.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DocumentSyncOperationsCompanion(')
+          ..write('id: $id, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('operation: $operation, ')
+          ..write('payload: $payload, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$DocumentsDatabase extends GeneratedDatabase {
   _$DocumentsDatabase(QueryExecutor e) : super(e);
   $DocumentsDatabaseManager get managers => $DocumentsDatabaseManager(this);
   late final $CachedDocumentsTable cachedDocuments = $CachedDocumentsTable(
     this,
   );
+  late final $DocumentSyncOperationsTable documentSyncOperations =
+      $DocumentSyncOperationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [cachedDocuments];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    cachedDocuments,
+    documentSyncOperations,
+  ];
 }
 
 typedef $$CachedDocumentsTableCreateCompanionBuilder =
@@ -1340,10 +1847,299 @@ typedef $$CachedDocumentsTableProcessedTableManager =
       CachedDocument,
       PrefetchHooks Function()
     >;
+typedef $$DocumentSyncOperationsTableCreateCompanionBuilder =
+    DocumentSyncOperationsCompanion Function({
+      Value<int> id,
+      required String entityType,
+      required String entityId,
+      required String operation,
+      required String payload,
+      required DateTime updatedAt,
+      Value<int> attempts,
+      Value<String> status,
+    });
+typedef $$DocumentSyncOperationsTableUpdateCompanionBuilder =
+    DocumentSyncOperationsCompanion Function({
+      Value<int> id,
+      Value<String> entityType,
+      Value<String> entityId,
+      Value<String> operation,
+      Value<String> payload,
+      Value<DateTime> updatedAt,
+      Value<int> attempts,
+      Value<String> status,
+    });
+
+class $$DocumentSyncOperationsTableFilterComposer
+    extends Composer<_$DocumentsDatabase, $DocumentSyncOperationsTable> {
+  $$DocumentSyncOperationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DocumentSyncOperationsTableOrderingComposer
+    extends Composer<_$DocumentsDatabase, $DocumentSyncOperationsTable> {
+  $$DocumentSyncOperationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DocumentSyncOperationsTableAnnotationComposer
+    extends Composer<_$DocumentsDatabase, $DocumentSyncOperationsTable> {
+  $$DocumentSyncOperationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get operation =>
+      $composableBuilder(column: $table.operation, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$DocumentSyncOperationsTableTableManager
+    extends
+        RootTableManager<
+          _$DocumentsDatabase,
+          $DocumentSyncOperationsTable,
+          DocumentSyncOperation,
+          $$DocumentSyncOperationsTableFilterComposer,
+          $$DocumentSyncOperationsTableOrderingComposer,
+          $$DocumentSyncOperationsTableAnnotationComposer,
+          $$DocumentSyncOperationsTableCreateCompanionBuilder,
+          $$DocumentSyncOperationsTableUpdateCompanionBuilder,
+          (
+            DocumentSyncOperation,
+            BaseReferences<
+              _$DocumentsDatabase,
+              $DocumentSyncOperationsTable,
+              DocumentSyncOperation
+            >,
+          ),
+          DocumentSyncOperation,
+          PrefetchHooks Function()
+        > {
+  $$DocumentSyncOperationsTableTableManager(
+    _$DocumentsDatabase db,
+    $DocumentSyncOperationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DocumentSyncOperationsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DocumentSyncOperationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DocumentSyncOperationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String> operation = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => DocumentSyncOperationsCompanion(
+                id: id,
+                entityType: entityType,
+                entityId: entityId,
+                operation: operation,
+                payload: payload,
+                updatedAt: updatedAt,
+                attempts: attempts,
+                status: status,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String entityType,
+                required String entityId,
+                required String operation,
+                required String payload,
+                required DateTime updatedAt,
+                Value<int> attempts = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => DocumentSyncOperationsCompanion.insert(
+                id: id,
+                entityType: entityType,
+                entityId: entityId,
+                operation: operation,
+                payload: payload,
+                updatedAt: updatedAt,
+                attempts: attempts,
+                status: status,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $DocumentSyncOperationsTable,
+                    DocumentSyncOperation
+                  >(table),
+                  BaseReferences<
+                    _$DocumentsDatabase,
+                    $DocumentSyncOperationsTable,
+                    DocumentSyncOperation
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DocumentSyncOperationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$DocumentsDatabase,
+      $DocumentSyncOperationsTable,
+      DocumentSyncOperation,
+      $$DocumentSyncOperationsTableFilterComposer,
+      $$DocumentSyncOperationsTableOrderingComposer,
+      $$DocumentSyncOperationsTableAnnotationComposer,
+      $$DocumentSyncOperationsTableCreateCompanionBuilder,
+      $$DocumentSyncOperationsTableUpdateCompanionBuilder,
+      (
+        DocumentSyncOperation,
+        BaseReferences<
+          _$DocumentsDatabase,
+          $DocumentSyncOperationsTable,
+          DocumentSyncOperation
+        >,
+      ),
+      DocumentSyncOperation,
+      PrefetchHooks Function()
+    >;
 
 class $DocumentsDatabaseManager {
   final _$DocumentsDatabase _db;
   $DocumentsDatabaseManager(this._db);
   $$CachedDocumentsTableTableManager get cachedDocuments =>
       $$CachedDocumentsTableTableManager(_db, _db.cachedDocuments);
+  $$DocumentSyncOperationsTableTableManager get documentSyncOperations =>
+      $$DocumentSyncOperationsTableTableManager(
+        _db,
+        _db.documentSyncOperations,
+      );
 }
