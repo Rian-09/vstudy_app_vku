@@ -25,9 +25,17 @@ class StatsService {
     _dailyGoalMinutes = value.clamp(30, 240);
   }
 
-  static final weekStart = DateTime(2026, 10, 12);
-  static final month = DateTime(2026, 10);
-  static const selectedMonthDay = 14;
+  static DateTime get weekStart {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  }
+
+  static DateTime get month {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month);
+  }
+
+  static int get selectedMonthDay => DateTime.now().day;
   static const weeklyGoalMinutes = 15 * 60;
   static const todayStudyMinutes = 100;
   static const goalDaysMetThisWeek = 5;
@@ -270,13 +278,16 @@ class StatsService {
   int get weeklyFocusTotalMinutes =>
       weeklyFocusMinutes.fold(0, (total, minutes) => total + minutes);
 
-  List<StudyDayStat> get monthDays => List.generate(31, (index) {
+  List<StudyDayStat> get monthDays => List.generate(
+    DateTime(month.year, month.month + 1, 0).day,
+    (index) {
     final day = index + 1;
     return StudyDayStat(
       date: DateTime(month.year, month.month, day),
       minutes: _studyMinutesForDate(DateTime(month.year, month.month, day)),
     );
-  });
+    },
+  );
 
   List<StudyDayStat> get studiedMonthDays =>
       monthDays.where((day) => day.minutes > 0).toList(growable: false);
@@ -295,7 +306,8 @@ class StatsService {
     if (results.isEmpty) return 0;
     final average = results.fold<double>(
           0,
-          (total, result) => total + result.score,
+          (total, result) =>
+              total + (result.score <= 10 ? result.score * 10 : result.score),
         ) /
         results.length;
     return (average * 10).round();
@@ -404,8 +416,11 @@ class StatsService {
         .toList();
     _remoteAverageQuizScore = scores.isEmpty
         ? null
-        : (scores.reduce((first, second) => first + second) / scores.length)
-              .round();
+        : scores
+              .map((score) => score <= 10 ? score * 10 : score)
+              .reduce((first, second) => first + second)
+              .round() ~/
+          scores.length;
     for (final raw in documentProgressRows as List) {
       final row = Map<String, dynamic>.from(raw);
       final document = row['documents'];

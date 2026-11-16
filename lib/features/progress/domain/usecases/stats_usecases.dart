@@ -29,7 +29,7 @@ class StatsUseCases {
 
   static DateTime get weekStart => data.StatsService.weekStart;
   static DateTime get month => data.StatsService.month;
-  static const selectedMonthDay = data.StatsService.selectedMonthDay;
+  static int get selectedMonthDay => data.StatsService.selectedMonthDay;
   static const weeklyGoalMinutes = data.StatsService.weeklyGoalMinutes;
   static const todayStudyMinutes = data.StatsService.todayStudyMinutes;
   static const goalDaysMetThisWeek = data.StatsService.goalDaysMetThisWeek;

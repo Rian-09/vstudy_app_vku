@@ -26,7 +26,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
 
   String get _subtitle =>
       '${_selectedDate.day.toString().padLeft(2, '0')}/'
-      '${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year} · Dữ liệu mẫu';
+      '${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year} · Dữ liệu học tập';
 
   @override
   Widget build(BuildContext context) {

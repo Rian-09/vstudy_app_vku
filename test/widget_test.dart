@@ -389,8 +389,8 @@ void main() {
 
     await tester.tap(find.text('Tháng'));
     await tester.pumpAndSettle();
-    expect(find.text('Tháng 10, 2026'), findsOneWidget);
-    await tester.tap(find.text('14'));
+    expect(find.textContaining('Tháng '), findsOneWidget);
+    await tester.tap(find.text(DateTime.now().day.toString()).first);
     await tester.pumpAndSettle();
     expect(find.text('Chi tiết ngày học'), findsOneWidget);
     expect(find.byTooltip('Tài liệu'), findsOneWidget);

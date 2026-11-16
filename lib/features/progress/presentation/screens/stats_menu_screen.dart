@@ -30,7 +30,7 @@ class StatsNavigationHost extends StatelessWidget {
           '/error-analysis' => const ErrorAnalysisScreen(),
           '/exam-progress' => const ExamProgressScreen(),
           '/day-detail' => DayDetailScreen(
-            date: settings.arguments as DateTime? ?? DateTime(2026, 10, 14),
+            date: settings.arguments as DateTime? ?? DateTime.now(),
           ),
           '/placeholder' => StatsPlaceholderScreen(
             title: settings.arguments as String? ?? 'Đang phát triển',

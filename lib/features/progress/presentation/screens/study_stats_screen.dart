@@ -16,8 +16,8 @@ class StudyStatsScreen extends StatefulWidget {
 
 class _StudyStatsScreenState extends State<StudyStatsScreen> {
   StatsPeriod _period = StatsPeriod.week;
-  final DateTime _selectedWeekDate = DateTime(2026, 10, 17);
-  final DateTime _selectedMonthDate = DateTime(2026, 10, 14);
+  final DateTime _selectedWeekDate = DateTime.now();
+  final DateTime _selectedMonthDate = DateTime.now();
 
   StatsService get _stats => StatsService.instance;
 
@@ -26,10 +26,15 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
   }
 
   String get _subtitle => switch (_period) {
-    StatsPeriod.week => 'Tuần này · 12/10 đến 18/10',
-    StatsPeriod.month => 'Tháng 10, 2026',
+    StatsPeriod.week =>
+      'Tuần này · ${_formatDate(StatsService.weekStart)} đến '
+          '${_formatDate(StatsService.weekStart.add(const Duration(days: 6)))}',
+    StatsPeriod.month => 'Tháng ${StatsService.month.month}, ${StatsService.month.year}',
     StatsPeriod.semester => 'Học kỳ 1 · 2026–2027',
   };
+
+  String _formatDate(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
