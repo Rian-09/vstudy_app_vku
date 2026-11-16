@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../features/documents/presentation/screens/documents_screen.dart';
 import '../../../features/documents/presentation/screens/library_screen.dart';
@@ -57,61 +58,63 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          Expanded(
-            child: _showLibrary
-                ? const LibraryScreen()
-                : switch (_selectedIndex) {
-                    0 => const CalendarScreen(),
-                    1 => const QuizNavigationHost(),
-                    2 => const HomeScreen(),
-                    3 => const StatsNavigationHost(),
-                    4 => const DocumentsScreen(),
-                    _ => _PlaceholderTab(title: _tabs[_selectedIndex].label),
+    return ProviderScope(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(
+              child: _showLibrary
+                  ? const LibraryScreen()
+                  : switch (_selectedIndex) {
+                      0 => const CalendarScreen(),
+                      1 => const QuizNavigationHost(),
+                      2 => const HomeScreen(),
+                      3 => const StatsNavigationHost(),
+                      4 => const DocumentsScreen(),
+                      _ => _PlaceholderTab(title: _tabs[_selectedIndex].label),
+                    },
+            ),
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton:
+            _selectedIndex == 0 ||
+                _selectedIndex == 1 ||
+                _selectedIndex == 2 ||
+                _selectedIndex == 3 ||
+                _selectedIndex == 4
+            ? SizedBox.square(
+                dimension: 65,
+                child: FloatingActionButton(
+                  tooltip: 'Trợ lý AI',
+                  heroTag: 'home-ai-assistant',
+                  onPressed: () {
+                    Navigator.of(context).pushNamed<void>(
+                      '/ai',
+                      arguments: MainShellNavigationArgs(
+                        selectedIndex: _selectedIndex,
+                        onSelected: _selectTab,
+                      ),
+                    );
                   },
-          ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton:
-          _selectedIndex == 0 ||
-              _selectedIndex == 1 ||
-              _selectedIndex == 2 ||
-              _selectedIndex == 3 ||
-              _selectedIndex == 4
-          ? SizedBox.square(
-              dimension: 65,
-              child: FloatingActionButton(
-                tooltip: 'Trợ lý AI',
-                heroTag: 'home-ai-assistant',
-                onPressed: () {
-                  Navigator.of(context).pushNamed<void>(
-                    '/ai',
-                    arguments: MainShellNavigationArgs(
-                      selectedIndex: _selectedIndex,
-                      onSelected: _selectTab,
-                    ),
-                  );
-                },
-                backgroundColor: const Color(0xFFC9A227),
-                foregroundColor: Colors.white,
-                elevation: 8,
-                shape: const CircleBorder(),
-                child: SvgPicture.asset(
-                  'assets/images/home/ai_badge.svg',
-                  width: 65,
-                  height: 65,
+                  backgroundColor: const Color(0xFFC9A227),
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  shape: const CircleBorder(),
+                  child: SvgPicture.asset(
+                    'assets/images/home/ai_badge.svg',
+                    width: 65,
+                    height: 65,
+                  ),
                 ),
-              ),
-            )
-          : null,
-      bottomNavigationBar: MainShellBottomNavigationBar(
-        selectedIndex: _selectedIndex,
-        onSelected: _selectTab,
+              )
+            : null,
+        bottomNavigationBar: MainShellBottomNavigationBar(
+          selectedIndex: _selectedIndex,
+          onSelected: _selectTab,
+        ),
       ),
     );
   }
