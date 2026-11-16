@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/datasources/calendar_service.dart';
@@ -14,21 +15,26 @@ import '../../domain/repositories/schedule_repository.dart';
 import '../../domain/usecases/schedule_usecases.dart';
 import '../../domain/usecases/filter_schedule_events_usecase.dart';
 
-final scheduleRepositoryProvider = Provider<ScheduleRepository>(
-  (ref) {
-    const url = String.fromEnvironment('SUPABASE_URL');
-    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-    if (url.isEmpty || anonKey.isEmpty) {
-      return ScheduleRepositoryImpl(LocalScheduleDataSource(CalendarService.instance));
-    }
-    final dataSource = OfflineScheduleDataSource(
-      database: ScheduleDatabase.instance,
-      client: Supabase.instance.client,
-    )..startAutoSync();
-    ref.onDispose(dataSource.dispose);
-    return ScheduleRepositoryImpl(dataSource);
-  },
-);
+final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
+  const url = String.fromEnvironment('SUPABASE_URL');
+  const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  if (url.isEmpty || anonKey.isEmpty) {
+    return ScheduleRepositoryImpl(
+      LocalScheduleDataSource(CalendarService.instance),
+    );
+  }
+  if (kIsWeb) {
+    return ScheduleRepositoryImpl(
+      SupabaseScheduleDataSource(Supabase.instance.client),
+    );
+  }
+  final dataSource = OfflineScheduleDataSource(
+    database: ScheduleDatabase.instance,
+    client: Supabase.instance.client,
+  )..startAutoSync();
+  ref.onDispose(dataSource.dispose);
+  return ScheduleRepositoryImpl(dataSource);
+});
 
 final getScheduleEventsUseCaseProvider = Provider(
   (ref) => GetScheduleEventsUseCase(ref.watch(scheduleRepositoryProvider)),
@@ -49,22 +55,25 @@ final filterScheduleEventsUseCaseProvider = Provider(
   (ref) => const FilterScheduleEventsUseCase(),
 );
 
-final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
-    AsyncValue<List<CalendarEvent>>>((ref) {
-  final controller = ScheduleController(
-    getEvents: ref.watch(getScheduleEventsUseCaseProvider),
-    addEvent: ref.watch(addScheduleEventUseCaseProvider),
-    updateEvent: ref.watch(updateScheduleEventUseCaseProvider),
-    deleteEvent: ref.watch(deleteScheduleEventUseCaseProvider),
-    reminderService: ReminderService.instance,
-    updateStatus: ref.watch(updateScheduleStatusUseCaseProvider),
-    filterEvents: ref.watch(filterScheduleEventsUseCaseProvider),
-  );
-  controller.load();
-  return controller;
-});
+final scheduleControllerProvider =
+    StateNotifierProvider<ScheduleController, AsyncValue<List<CalendarEvent>>>((
+      ref,
+    ) {
+      final controller = ScheduleController(
+        getEvents: ref.watch(getScheduleEventsUseCaseProvider),
+        addEvent: ref.watch(addScheduleEventUseCaseProvider),
+        updateEvent: ref.watch(updateScheduleEventUseCaseProvider),
+        deleteEvent: ref.watch(deleteScheduleEventUseCaseProvider),
+        reminderService: ReminderService.instance,
+        updateStatus: ref.watch(updateScheduleStatusUseCaseProvider),
+        filterEvents: ref.watch(filterScheduleEventsUseCaseProvider),
+      );
+      controller.load();
+      return controller;
+    });
 
-class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> {
+class ScheduleController
+    extends StateNotifier<AsyncValue<List<CalendarEvent>>> {
   ScheduleController({
     required this._getEvents,
     required this._addEvent,
@@ -141,9 +150,10 @@ class ScheduleController extends StateNotifier<AsyncValue<List<CalendarEvent>>> 
   }
 
   List<CalendarEvent> _sortedModels(List<ScheduleEvent> events) =>
-      _filterEvents(events, const ScheduleEventFilter())
-          .map(_toModel)
-          .toList(growable: false);
+      _filterEvents(
+        events,
+        const ScheduleEventFilter(),
+      ).map(_toModel).toList(growable: false);
 }
 
 ScheduleEvent _toEntity(CalendarEvent event) => ScheduleEvent(

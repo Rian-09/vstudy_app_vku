@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:flutter_application_1/core/usecase/usecase.dart';
@@ -97,8 +98,13 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
         );
       }
     } catch (_) {
-      await DocumentRepository.instance.hydrateFromCache();
-      DocumentRepository.instance.startAutoSync();
+      // Drift's native executor is not available on Flutter Web unless a
+      // web database backend is configured. Online web sessions keep remote
+      // data; native platforms fall back to the local cache and sync queue.
+      if (!kIsWeb) {
+        await DocumentRepository.instance.hydrateFromCache();
+        DocumentRepository.instance.startAutoSync();
+      }
     }
   }
 
