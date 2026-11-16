@@ -90,9 +90,11 @@ class AuthController extends StateNotifier<AsyncValue<UserProfile?>> {
       if (Supabase.instance.client.auth.currentUser != null) {
         await DocumentRepository.instance.hydrateFromSupabase();
         await DocumentRepository.instance.syncPendingChanges();
+        DocumentRepository.instance.startAutoSync();
       }
     } catch (_) {
       await DocumentRepository.instance.hydrateFromCache();
+      DocumentRepository.instance.startAutoSync();
     }
   }
 

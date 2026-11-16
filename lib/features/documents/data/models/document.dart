@@ -284,10 +284,7 @@ class DocumentRepository extends ChangeNotifier {
 
   Future<void> syncPendingChanges() async {
     try {
-      await DocumentSyncQueue(
-        client: Supabase.instance.client,
-        database: DocumentsDatabase.instance,
-      ).syncPending();
+      await _syncQueue.syncPending();
     } catch (_) {
       // A missing connection keeps operations queued for the next login.
     }
@@ -338,12 +335,24 @@ class DocumentRepository extends ChangeNotifier {
 
   Future<void> _enqueueSync(StudyDocument document) async {
     try {
-      await DocumentSyncQueue(
-        client: Supabase.instance.client,
-        database: DocumentsDatabase.instance,
-      ).enqueue(document);
+      await _syncQueue.enqueue(document);
     } catch (_) {
       // Local UI state remains usable if Supabase is not initialized.
+    }
+  }
+
+  DocumentSyncQueue get _syncQueue => _queue ??= DocumentSyncQueue(
+    client: Supabase.instance.client,
+    database: DocumentsDatabase.instance,
+  );
+
+  DocumentSyncQueue? _queue;
+
+  void startAutoSync() {
+    try {
+      _syncQueue.startAutoSync();
+    } catch (_) {
+      // Supabase may be intentionally disabled in local/test builds.
     }
   }
 }

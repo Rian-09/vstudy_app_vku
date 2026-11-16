@@ -1,15 +1,33 @@
 import 'dart:convert';
+import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../local/documents_database.dart';
 import '../models/document.dart';
 
 class DocumentSyncQueue {
-  const DocumentSyncQueue({required this.client, required this.database});
+  DocumentSyncQueue({required this.client, required this.database});
 
   final SupabaseClient client;
   final DocumentsDatabase database;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
+  void startAutoSync() {
+    _connectivitySubscription ??= Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      if (results.isNotEmpty && !results.contains(ConnectivityResult.none)) {
+        unawaited(syncPending());
+      }
+    });
+  }
+
+  Future<void> dispose() async {
+    await _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+  }
 
   Future<void> enqueue(StudyDocument document) {
     return database.enqueueSyncOperation(
