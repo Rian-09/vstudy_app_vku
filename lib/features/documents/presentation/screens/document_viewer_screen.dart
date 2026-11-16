@@ -21,7 +21,8 @@ class DocumentViewerScreen extends ConsumerStatefulWidget {
   final String documentId;
 
   @override
-  ConsumerState<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
+  ConsumerState<DocumentViewerScreen> createState() =>
+      _DocumentViewerScreenState();
 }
 
 class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
@@ -29,7 +30,8 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
   int _currentPage = 0;
   bool _showAiHint = true;
 
-  StudyDocument get _document => ref.read(documentUseCasesProvider).findById(widget.documentId) ??
+  StudyDocument get _document =>
+      ref.read(documentUseCasesProvider).findById(widget.documentId) ??
       ref.read(documentUseCasesProvider).documents.first;
 
   @override
@@ -49,7 +51,34 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     );
     if (started != true || !mounted) return;
 
+    if (document.filePath == null || document.filePath!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tài liệu này chưa có file PDF trên máy chủ.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await ref
+          .read(documentStorageDataSourceProvider)
+          .downloadAndCache(
+            documentId: document.id,
+            filePath: document.filePath!,
+          );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể tải tài liệu. Vui lòng thử lại khi online.'),
+        ),
+      );
+      return;
+    }
+
     ref.read(documentUseCasesProvider).markDownloaded(document.id);
+    if (!mounted) return;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -80,8 +109,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
               _ViewerHeader(
                 document: document,
                 onBack: () => Navigator.of(context).maybePop(),
-                onToggleSaved: () =>
-                    documentUseCases.toggleSaved(document.id),
+                onToggleSaved: () => documentUseCases.toggleSaved(document.id),
                 onOpenLibrary: () =>
                     Navigator.of(context).pushNamed('/documents/library'),
               ),
@@ -93,11 +121,11 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                       child: Column(
                         children: [
                           _ViewerContextCard(
-                              document: _document,
-                              currentPage: _currentPage + 1,
-                              onToggleSaved: () => documentUseCases
-                                  .toggleSaved(document.id),
-                            ),
+                            document: _document,
+                            currentPage: _currentPage + 1,
+                            onToggleSaved: () =>
+                                documentUseCases.toggleSaved(document.id),
+                          ),
                           const SizedBox(height: 24),
                           Center(
                             child: SizedBox(
