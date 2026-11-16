@@ -8,6 +8,7 @@ import '../../../features/quiz/presentation/screens/quiz_home_screen.dart';
 import '../../../features/schedule/presentation/screens/calendar_screen.dart';
 import '../theme/auth_theme.dart';
 import '../widgets/auth_widgets.dart';
+import '../widgets/offline_banner.dart';
 import 'screens/home/home_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -58,16 +59,23 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _showLibrary
-          ? const LibraryScreen()
-          : switch (_selectedIndex) {
-              0 => const CalendarScreen(),
-              1 => const QuizNavigationHost(),
-              2 => const HomeScreen(),
-              3 => const StatsNavigationHost(),
-              4 => const DocumentsScreen(),
-              _ => _PlaceholderTab(title: _tabs[_selectedIndex].label),
-            },
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(
+            child: _showLibrary
+                ? const LibraryScreen()
+                : switch (_selectedIndex) {
+                    0 => const CalendarScreen(),
+                    1 => const QuizNavigationHost(),
+                    2 => const HomeScreen(),
+                    3 => const StatsNavigationHost(),
+                    4 => const DocumentsScreen(),
+                    _ => _PlaceholderTab(title: _tabs[_selectedIndex].label),
+                  },
+          ),
+        ],
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton:
           _selectedIndex == 0 ||
