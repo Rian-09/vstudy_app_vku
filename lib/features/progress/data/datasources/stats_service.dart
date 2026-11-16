@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/stats_models.dart';
 import '../../../schedule/data/datasources/calendar_service.dart';
 import '../../../schedule/data/models/calendar_event.dart';
@@ -6,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'study_session_service.dart';
 
-class StatsService {
+class StatsService extends ChangeNotifier {
   StatsService._();
 
   static final StatsService instance = StatsService._();
@@ -69,6 +71,7 @@ class StatsService {
     if (userId != null) {
       await preferences.setInt('vstudy.daily_goal.$userId', _dailyGoalMinutes);
     }
+    notifyListeners();
   }
 
   Future<void> loadGoalForUser(String userId) async {
@@ -76,6 +79,7 @@ class StatsService {
     final value = preferences.getInt('vstudy.daily_goal.$userId');
     _dailyGoalMinutes = value ?? 120;
     _hasDailyGoal = value != null;
+    notifyListeners();
   }
 
   static DateTime get weekStart {
@@ -489,6 +493,7 @@ class StatsService {
           .add(progress.clamp(0.0, 1.0));
     }
     _remoteLoaded = true;
+    notifyListeners();
   }
 
   void clearRemoteData() {
@@ -499,6 +504,7 @@ class StatsService {
     _remoteDocumentProgressBySubject.clear();
     _remoteDeadlineCountsBySubject.clear();
     _remoteOverdueDeadlineCount = 0;
+    notifyListeners();
   }
 
   static String _weekdayName(int weekday) => const [

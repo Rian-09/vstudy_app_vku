@@ -57,6 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             QuizService.instance,
             DocumentRepository.instance,
             StudySessionService.instance,
+            StatsService.instance,
           ]),
           builder: (context, _) {
             final stats = StatsService.instance;

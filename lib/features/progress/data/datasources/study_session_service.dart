@@ -37,6 +37,7 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
   String? _userId;
   DateTime? _startedAt;
   List<StudySessionRecord> _records = const [];
+  Timer? _refreshTimer;
 
   bool get hasActiveSession => _startedAt != null;
   List<StudySessionRecord> get records => List.unmodifiable(_records);
@@ -59,6 +60,10 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
     }
     _startedAt = DateTime.now();
     WidgetsBinding.instance.addObserver(this);
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      notifyListeners();
+    });
     notifyListeners();
   }
 
@@ -80,6 +85,8 @@ class StudySessionService with WidgetsBindingObserver, ChangeNotifier {
     final startedAt = _startedAt;
     final userId = _userId;
     _startedAt = null;
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
     if (startedAt == null || userId == null) return;
     WidgetsBinding.instance.removeObserver(this);
     final endedAt = DateTime.now();
