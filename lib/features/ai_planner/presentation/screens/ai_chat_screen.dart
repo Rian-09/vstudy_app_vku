@@ -1,20 +1,20 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_application_1/features/ai_planner/data/models/ai_models.dart';
 import 'package:flutter_application_1/features/ai_planner/domain/usecases/ai_planner_usecases.dart';
 import 'package:flutter_application_1/core/theme/auth_theme.dart';
 import 'package:flutter_application_1/core/widgets/auth_widgets.dart';
+import 'package:flutter_application_1/features/ai_planner/presentation/providers/ai_planner_providers.dart';
 import 'package:flutter_application_1/features/ai_planner/presentation/widgets/ai_widgets.dart';
 
-class AiChatScreen extends StatefulWidget {
+class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
   @override
-  State<AiChatScreen> createState() => _AiChatScreenState();
+  ConsumerState<AiChatScreen> createState() => _AiChatScreenState();
 }
 
-class _AiChatScreenState extends State<AiChatScreen> {
+class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _controller = TextEditingController();
   final _service = AiService.instance;
   final _scrollController = ScrollController();
@@ -36,17 +36,29 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _typing = true;
     });
     _scrollToBottom();
-    await Future<void>.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
-    setState(() {
-      _service.chat.add(
-        AiChatMessage(
-          text: _service.replyFor(_service.chat.length),
-          fromUser: false,
-        ),
-      );
-      _typing = false;
-    });
+    final result = await ref.read(askAiUseCaseProvider)(
+      text,
+      context: 'Tài liệu đang học: Giải tích 1 · Chương 3.pdf',
+    );
+    if (!mounted) return;
+    result.match(
+      (failure) => setState(() {
+        _service.chat.add(
+          AiChatMessage(
+            text: 'Mình chưa thể trả lời lúc này: ${failure.message}',
+            fromUser: false,
+          ),
+        );
+        _typing = false;
+      }),
+      (answer) => setState(() {
+        _service.chat.add(
+          AiChatMessage(text: answer.answer, fromUser: false),
+        );
+        _typing = false;
+      }),
+    );
     _scrollToBottom();
   }
 
