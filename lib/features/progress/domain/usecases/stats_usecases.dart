@@ -56,7 +56,7 @@ class StatsUseCases {
   static const examWeeklyHours = data.StatsService.examWeeklyHours;
   static const examSubjects = data.StatsService.examSubjects;
   static const examInsights = data.StatsService.examInsights;
-  static const subjects = data.StatsService.subjects;
+  static List<SubjectStudyStats> get subjects => data.StatsService.instance.subjects;
   static const semesterInsights = data.StatsService.semesterInsights;
 }
 

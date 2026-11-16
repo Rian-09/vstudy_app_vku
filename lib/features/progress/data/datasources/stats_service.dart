@@ -11,6 +11,7 @@ class StatsService {
 
   final Map<DateTime, int> _remoteMinutesByDate = {};
   final Map<DateTime, List<StudyActivity>> _remoteActivitiesByDate = {};
+  final Map<String, List<double>> _remoteDocumentProgressBySubject = {};
   int? _remoteAverageQuizScore;
   bool _remoteLoaded = false;
 
@@ -138,7 +139,7 @@ class StatsService {
     ),
   ];
 
-  static const subjects = [
+  static const _defaultSubjects = [
     SubjectStudyStats(
       name: 'Giải tích 1',
       credits: 3,
@@ -186,6 +187,26 @@ class StatsService {
       ],
     ),
   ];
+
+  List<SubjectStudyStats> get subjects {
+    if (_remoteDocumentProgressBySubject.isEmpty) return _defaultSubjects;
+    return _remoteDocumentProgressBySubject.entries.map((entry) {
+      final progress = entry.value.isEmpty
+          ? 0.0
+          : entry.value.reduce((first, second) => first + second) /
+              entry.value.length;
+      return SubjectStudyStats(
+        name: entry.key,
+        credits: 0,
+        minutes: 0,
+        quizScore: averageQuizScore,
+        flashcardCount: 0,
+        completedExercises: 0,
+        totalExercises: 1,
+        chapters: [ChapterProgress(title: 'Tài liệu', progress: progress)],
+      );
+    }).toList(growable: false);
+  }
 
   static const semesterInsights = [
     StudyInsight(
@@ -299,9 +320,13 @@ class StatsService {
         .from('quiz_attempts')
         .select('score')
         .not('score', 'is', null);
+    final documentProgressRows = await client
+        .from('document_progress')
+        .select('progress, documents(subject_id, subjects(name))');
 
     _remoteMinutesByDate.clear();
     _remoteActivitiesByDate.clear();
+    _remoteDocumentProgressBySubject.clear();
     for (final raw in deadlineRows as List) {
       final row = Map<String, dynamic>.from(raw);
       if (row['event_type'] == 'deadline') continue;
@@ -336,6 +361,21 @@ class StatsService {
         ? null
         : (scores.reduce((first, second) => first + second) / scores.length)
               .round();
+    for (final raw in documentProgressRows as List) {
+      final row = Map<String, dynamic>.from(raw);
+      final document = row['documents'];
+      final subject = document is Map<String, dynamic>
+          ? document['subjects']
+          : null;
+      final subjectName = subject is Map<String, dynamic>
+          ? subject['name'] as String?
+          : null;
+      final progress = (row['progress'] as num?)?.toDouble();
+      if (subjectName == null || progress == null) continue;
+      _remoteDocumentProgressBySubject
+          .putIfAbsent(subjectName, () => [])
+          .add(progress.clamp(0.0, 1.0));
+    }
     _remoteLoaded = true;
   }
 
@@ -344,6 +384,7 @@ class StatsService {
     _remoteAverageQuizScore = null;
     _remoteMinutesByDate.clear();
     _remoteActivitiesByDate.clear();
+    _remoteDocumentProgressBySubject.clear();
   }
 
   DateTime _dateKey(DateTime value) => DateTime(value.year, value.month, value.day);
