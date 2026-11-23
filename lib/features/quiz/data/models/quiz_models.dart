@@ -1,4 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
+
+enum QuizMode { practice, exam }
 
 @immutable
 class Subject {
@@ -32,6 +36,8 @@ class Exam {
     required this.durationMinutes,
     required this.difficulty,
     required this.questions,
+    this.mode = QuizMode.practice,
+    this.shuffleOptions = false,
     this.score,
     this.isCompleted = false,
   });
@@ -44,8 +50,25 @@ class Exam {
   final int durationMinutes;
   final int difficulty;
   final List<Question> questions;
+  final QuizMode mode;
+  final bool shuffleOptions;
   final double? score;
   final bool isCompleted;
+
+  Exam copyWith({List<Question>? questions}) => Exam(
+    id: id,
+    subjectId: subjectId,
+    title: title,
+    chapterTitle: chapterTitle,
+    questionCount: questionCount,
+    durationMinutes: durationMinutes,
+    difficulty: difficulty,
+    questions: questions ?? this.questions,
+    mode: mode,
+    shuffleOptions: shuffleOptions,
+    score: score,
+    isCompleted: isCompleted,
+  );
 }
 
 @immutable
@@ -59,6 +82,7 @@ class Question {
     required this.options,
     required this.correctIndex,
     required this.explanation,
+    this.optionOrder = const [0, 1, 2, 3],
     this.previousAnswerIndex,
     this.wrongCount = 0,
   }) : assert(options.length == 4);
@@ -71,15 +95,29 @@ class Question {
   final List<String> options;
   final int correctIndex;
   final String explanation;
+  final List<int> optionOrder;
   final int? previousAnswerIndex;
   final int wrongCount;
 
   bool get wasAnsweredIncorrectly =>
       previousAnswerIndex != null && previousAnswerIndex != correctIndex;
 
+  Question shuffleOptions({Random? random}) {
+    final order = List<int>.generate(options.length, (index) => index)
+      ..shuffle(random);
+    return copyWith(
+      options: order.map((index) => options[index]).toList(growable: false),
+      correctIndex: order.indexOf(correctIndex),
+      optionOrder: order,
+    );
+  }
+
   Question copyWith({
     String? id,
     String? examId,
+    List<String>? options,
+    int? correctIndex,
+    List<int>? optionOrder,
     int? previousAnswerIndex,
     int? wrongCount,
   }) => Question(
@@ -88,9 +126,10 @@ class Question {
     topic: topic,
     chapterTitle: chapterTitle,
     text: text,
-    options: options,
-    correctIndex: correctIndex,
+    options: options ?? this.options,
+    correctIndex: correctIndex ?? this.correctIndex,
     explanation: explanation,
+    optionOrder: optionOrder ?? this.optionOrder,
     previousAnswerIndex: previousAnswerIndex ?? this.previousAnswerIndex,
     wrongCount: wrongCount ?? this.wrongCount,
   );

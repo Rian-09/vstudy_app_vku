@@ -52,3 +52,16 @@ supabase/functions/.env
 node_modules/
 android/build/
 supabase/.temp/
+
+# Vite / Node
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+.env
+.env.*
+backup_*.sql
+supabase/.temp/
+!.env.example

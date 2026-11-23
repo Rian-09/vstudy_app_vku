@@ -141,7 +141,11 @@ class QuizService extends ChangeNotifier {
         .select()
         .eq('is_published', true)
         .order('created_at');
-    final questionRows = await client.from('quiz_questions').select();
+    final questionRows = await client
+        .from('quiz_questions')
+        .select()
+        .order('sort_order')
+        .order('created_at');
     final optionRows = await client.from('quiz_options').select();
 
     final optionsByQuestion = <String, List<Map<String, dynamic>>>{};
@@ -203,6 +207,8 @@ class QuizService extends ChangeNotifier {
           durationMinutes: row['duration_minutes'] as int? ?? 30,
           difficulty: 0,
           questions: questions,
+          mode: row['mode'] == 'exam' ? QuizMode.exam : QuizMode.practice,
+          shuffleOptions: row['shuffle_options'] as bool? ?? false,
         ),
       );
     }
@@ -363,9 +369,16 @@ class QuizService extends ChangeNotifier {
   void startSession(String examId, {bool timed = false}) {
     final exam = examById(examId);
     if (exam == null) throw ArgumentError.value(examId, 'examId');
-    _activeExam = exam;
-    _answers = List<int?>.filled(exam.questions.length, null);
-    _checkedQuestions = List<bool>.filled(exam.questions.length, false);
+    final sessionExam = exam.shuffleOptions
+        ? exam.copyWith(
+            questions: exam.questions
+                .map((question) => question.shuffleOptions())
+                .toList(growable: false),
+          )
+        : exam;
+    _activeExam = sessionExam;
+    _answers = List<int?>.filled(sessionExam.questions.length, null);
+    _checkedQuestions = List<bool>.filled(sessionExam.questions.length, false);
     _currentQuestionIndex = 0;
     _startedAt = DateTime.now();
     _isTimed = timed;
@@ -495,10 +508,13 @@ class QuizService extends ChangeNotifier {
         final answer = index < result.answers.length
             ? result.answers[index]
             : null;
+        final selectedOptionIndex = answer == null
+            ? null
+            : exam.questions[index].optionOrder[answer];
         answers.add({
           'attempt_id': attemptId,
           'question_id': exam.questions[index].id,
-          'selected_option_index': answer,
+          'selected_option_index': selectedOptionIndex,
           'is_correct': answer == null
               ? null
               : answer == exam.questions[index].correctIndex,

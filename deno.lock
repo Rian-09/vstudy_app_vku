@@ -1,0 +1,41 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.119.2"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.119.2": "e7729dec88af13b1d17953717407c06705450383f619c26efa6d542b8f73f8c3",
+    "https://esm.sh/fflate@0.8.2": "e0cdd268850b4eac9ef9f188a3b4c5c9dd3ebd0f66c4006a13911b2a0c0512bb",
+    "https://esm.sh/zod@4.1.5": "716d4c669ca0dcea7c085f01741ee8cdd092826892d169cc025a5b1b79871b1f"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@hookform/resolvers@^5.2.2",
+        "npm:@radix-ui/react-slot@^1.2.3",
+        "npm:@supabase/supabase-js@^2.57.4",
+        "npm:@tanstack/react-query@^5.87.4",
+        "npm:@types/react-dom@^19.1.9",
+        "npm:@types/react@^19.1.13",
+        "npm:@vitejs/plugin-react@^5.0.2",
+        "npm:autoprefixer@^10.4.21",
+        "npm:class-variance-authority@~0.7.1",
+        "npm:clsx@^2.1.1",
+        "npm:lucide-react@0.468",
+        "npm:postcss@^8.5.6",
+        "npm:react-dom@^19.1.1",
+        "npm:react-hook-form@^7.62.0",
+        "npm:react-router-dom@^7.9.1",
+        "npm:react@^19.1.1",
+        "npm:recharts@^3.2.1",
+        "npm:sonner@^2.0.7",
+        "npm:supabase@^3.1.0",
+        "npm:tailwind-merge@^3.3.1",
+        "npm:tailwindcss@^3.4.17",
+        "npm:typescript@~5.9.2",
+        "npm:vite@^7.1.5",
+        "npm:zod@^4.1.5"
+      ]
+    }
+  }
+}

@@ -21,6 +21,13 @@ class ExamDetailScreen extends ConsumerStatefulWidget {
 class _ExamDetailScreenState extends ConsumerState<ExamDetailScreen> {
   _QuizMode _mode = _QuizMode.practice;
 
+  @override
+  void initState() {
+    super.initState();
+    final exam = ref.read(quizUseCasesProvider).examById(widget.examId);
+    if (exam?.mode == QuizMode.exam) _mode = _QuizMode.timed;
+  }
+
   Future<void> _start() async {
     await Navigator.of(context).pushNamed<void>(
       '/play',

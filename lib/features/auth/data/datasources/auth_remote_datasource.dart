@@ -74,12 +74,17 @@ class SupabaseAuthDataSource implements AuthRemoteDataSource {
       );
     }
 
-    final profile = await currentUser();
-    if (profile == null) {
+    try {
+      final profile = await currentUser();
+      if (profile == null) {
+        await _client.auth.signOut();
+        throw const AuthException('Không tìm thấy hồ sơ người dùng.');
+      }
+      return profile;
+    } catch (_) {
       await _client.auth.signOut();
-      throw const AuthException('Không tìm thấy hồ sơ người dùng.');
+      rethrow;
     }
-    return profile;
   }
 
   @override
@@ -104,9 +109,13 @@ class SupabaseAuthDataSource implements AuthRemoteDataSource {
         .select()
         .eq('id', user.id)
         .maybeSingle();
-    if (row == null) return null;
+    if (row == null) {
+      await _client.auth.signOut();
+      return null;
+    }
     final profile = UserProfileModel.fromJson(row);
     if (profile.isLocked) {
+      await _client.auth.signOut();
       throw const AuthException('Tài khoản đã bị khóa.');
     }
     return profile;

@@ -16,11 +16,20 @@ update public.documents
 set file_size = file_size_bytes
 where file_size is null and file_size_bytes is not null;
 
-alter table public.documents
-  drop constraint if exists documents_file_size_nonnegative;
-alter table public.documents
-  add constraint documents_file_size_nonnegative
-  check (file_size is null or file_size >= 0);
+do $$
+begin
+  if not exists (
+    select 1
+      from pg_constraint
+     where conrelid = 'public.documents'::regclass
+       and conname = 'documents_file_size_nonnegative'
+  ) then
+    alter table public.documents
+      add constraint documents_file_size_nonnegative
+      check (file_size is null or file_size >= 0);
+  end if;
+end;
+$$;
 
 create table if not exists public.reading_progress (
   id uuid primary key default gen_random_uuid(),
@@ -113,6 +122,10 @@ drop policy if exists documents_read_published on public.documents;
 drop policy if exists documents_admin_insert on public.documents;
 drop policy if exists documents_admin_update on public.documents;
 drop policy if exists documents_admin_delete on public.documents;
+drop policy if exists documents_read_owner_or_published on public.documents;
+drop policy if exists documents_insert_owner on public.documents;
+drop policy if exists documents_update_owner on public.documents;
+drop policy if exists documents_delete_owner on public.documents;
 create policy documents_read_owner_or_published on public.documents
   for select to authenticated
   using (user_id = auth.uid() or is_published or public.is_admin_user());
@@ -139,6 +152,7 @@ create policy documents_delete_owner on public.documents
   for delete to authenticated
   using (user_id = auth.uid() or public.is_admin_user());
 
+drop policy if exists reading_progress_owner_all on public.reading_progress;
 create policy reading_progress_owner_all on public.reading_progress
   for all to authenticated
   using (user_id = auth.uid())
@@ -149,6 +163,7 @@ create policy reading_progress_owner_all on public.reading_progress
       where d.id = document_id and (d.user_id = auth.uid() or d.is_published)
     )
   );
+drop policy if exists study_sessions_owner_all on public.study_sessions;
 create policy study_sessions_owner_all on public.study_sessions
   for all to authenticated
   using (user_id = auth.uid())
@@ -159,6 +174,7 @@ create policy study_sessions_owner_all on public.study_sessions
       where d.id = document_id and (d.user_id = auth.uid() or d.is_published)
     ))
   );
+drop policy if exists ai_summaries_owner_all on public.ai_summaries;
 create policy ai_summaries_owner_all on public.ai_summaries
   for all to authenticated
   using (user_id = auth.uid())
@@ -169,6 +185,7 @@ create policy ai_summaries_owner_all on public.ai_summaries
       where d.id = document_id and (d.user_id = auth.uid() or d.is_published)
     ))
   );
+drop policy if exists ai_chats_owner_all on public.ai_chats;
 create policy ai_chats_owner_all on public.ai_chats
   for all to authenticated
   using (user_id = auth.uid())
@@ -179,6 +196,7 @@ create policy ai_chats_owner_all on public.ai_chats
       where d.id = document_id and (d.user_id = auth.uid() or d.is_published)
     ))
   );
+drop policy if exists ai_messages_owner_all on public.ai_messages;
 create policy ai_messages_owner_all on public.ai_messages
   for all to authenticated
   using (
@@ -189,6 +207,7 @@ create policy ai_messages_owner_all on public.ai_messages
     user_id = auth.uid()
     and exists (select 1 from public.ai_chats c where c.id = chat_id and c.user_id = auth.uid())
   );
+drop policy if exists study_roadmaps_owner_all on public.study_roadmaps;
 create policy study_roadmaps_owner_all on public.study_roadmaps
   for all to authenticated
   using (user_id = auth.uid())
@@ -211,6 +230,10 @@ drop policy if exists documents_storage_read on storage.objects;
 drop policy if exists documents_storage_admin_insert on storage.objects;
 drop policy if exists documents_storage_admin_update on storage.objects;
 drop policy if exists documents_storage_admin_delete on storage.objects;
+drop policy if exists documents_storage_read_owner_or_published on storage.objects;
+drop policy if exists documents_storage_insert_owner on storage.objects;
+drop policy if exists documents_storage_update_owner on storage.objects;
+drop policy if exists documents_storage_delete_owner on storage.objects;
 create policy documents_storage_read_owner_or_published on storage.objects
   for select to authenticated
   using (
